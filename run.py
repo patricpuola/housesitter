@@ -1,7 +1,12 @@
 #!/usr/bin/python3
-from selenium import webdriver
-import modules.vuokraovi_com
+import sys
+sys.path.insert(1, '/srv/scraper/modules')
 
+from selenium import webdriver
+
+import vuokraovi_com
+
+# Chrome init
 chrome_path = r"/srv/res/chromedriver.81"
 chrome_options = webdriver.ChromeOptions()
 #chrome_options.add_argument("--headless")
