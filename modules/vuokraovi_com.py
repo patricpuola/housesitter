@@ -62,7 +62,7 @@ def scrapeResultPage(driver, page_nr):
 		location = ad.location_once_scrolled_into_view
 		size = ad.size
 
-		ad_png = open('/srv/scraper/screenshots/ad_'+str(page_nr)+"_"+str(i)+'.png', 'bw+')
+		ad_png = open('screenshots/ad_'+str(page_nr)+"_"+str(i)+'.png', 'bw+')
 		ad_png.write(ad.screenshot_as_png)
 		ad_png.close()
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import sys
-sys.path.insert(1, '/srv/scraper/modules')
+sys.path.insert(1, '/srv/housesitter/modules')
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -8,7 +8,7 @@ from selenium.webdriver.common.keys import Keys
 import vuokraovi_com
 
 # Chrome init
-chrome_path = r"/srv/res/chromedriver.81"
+chrome_path = r"webdrivers/chromedriver.81"
 chrome_options = webdriver.ChromeOptions()
 #chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
