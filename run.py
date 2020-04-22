@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-import sys
-sys.path.insert(1, '/srv/housesitter/modules')
+import sys, os
+sys.path.insert(1, r'modules')
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys

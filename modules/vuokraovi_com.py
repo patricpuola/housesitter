@@ -4,11 +4,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
-import time
-
-#debug
-from pprint import pprint
-from inspect import getmembers
+import os, time
 
 def getListings(driver):
 	driver.get("https://vuokraovi.com")
@@ -41,6 +37,9 @@ def getListings(driver):
 
 	search_button.click()
 
+	if not os.path.exists(r"ad_shots"):
+		os.makedirs(r"ad_shots")
+
 	page_nr = 0
 	while (scrapeResultPage(driver, page_nr)):
 		driver.find_element_by_xpath(getXpath("next_result_page")).click()
@@ -64,7 +63,7 @@ def scrapeResultPage(driver, page_nr):
 		location = ad.location_once_scrolled_into_view
 		size = ad.size
 
-		ad_png = open('screenshots/ad_'+str(page_nr)+"_"+str(i)+'.png', 'bw+')
+		ad_png = open(r'ad_shots/ad_'+str(page_nr)+"_"+str(i)+'.png', 'bw+')
 		ad_png.write(ad.screenshot_as_png)
 		ad_png.close()
 
