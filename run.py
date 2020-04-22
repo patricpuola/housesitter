@@ -16,3 +16,5 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 driver = webdriver.Chrome(chrome_path, options=chrome_options)
 
 vuokraovi_com.getListings(driver)
+
+driver.quit()

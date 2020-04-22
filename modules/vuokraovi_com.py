@@ -45,6 +45,8 @@ def getListings(driver):
 	while (scrapeResultPage(driver, page_nr)):
 		driver.find_element_by_xpath(getXpath("next_result_page")).click()
 		page_nr += 1
+		if (page_nr > 2):
+			break
 
 def scrapeResultPage(driver, page_nr):
 	timeout = 5
@@ -66,7 +68,7 @@ def scrapeResultPage(driver, page_nr):
 		ad_png.write(ad.screenshot_as_png)
 		ad_png.close()
 
-		print("Ilmoitus "+str(page_nr)+"_"+str(i)+":")
+		print("\nAd "+str(i)+" of page "+str(page_nr+1)+":")
 		print(ad.text)
 		ads_scraped = True
 		i += 1
