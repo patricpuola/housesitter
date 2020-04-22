@@ -4,3 +4,7 @@ Software environment:
 - Selenium
 - chromedriver (matching to Chrome version)
 - Google Chrome
+
+Run with "./run.py" or "python3 run.py"
+
+![](preview.gif)
