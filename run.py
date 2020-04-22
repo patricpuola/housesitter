@@ -3,6 +3,7 @@ import sys
 sys.path.insert(1, '/srv/scraper/modules')
 
 from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 
 import vuokraovi_com
 
