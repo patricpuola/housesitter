@@ -67,7 +67,7 @@ def scrapeResultPage(driver, page_nr, listings):
 
 		img_index = len(listings)
 
-		ad_png = open(r'ad_shots/vuokraovi_com_ad__'+str(img_index)+'.png', 'bw+')
+		ad_png = open(r'ad_shots/vuokraovi_com_ad_'+str(img_index)+'.png', 'bw+')
 		ad_png.write(ad.screenshot_as_png)
 		ad_png.close()
 
