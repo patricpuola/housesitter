@@ -67,17 +67,19 @@ def scrapeResultPage(driver, page_nr, listings):
 
 		img_index = len(listings)
 
-		ad_png = open(r'ad_shots/vuokraovi_com_ad__'+img_index+'.png', 'bw+')
+		ad_png = open(r'ad_shots/vuokraovi_com_ad__'+str(img_index)+'.png', 'bw+')
 		ad_png.write(ad.screenshot_as_png)
 		ad_png.close()
 
-		print("\nAd "+str(i)+" of page "+str(page_nr+1)+":")
+		print("\nAd "+str(img_index)+" of page "+str(page_nr+1)+":")
 		lines = ad.text.split("\n")
-		house_type, area_m2 = lines[0].split(',',1)
+		house_type_area_m2 = lines[0]
 		layout = lines[1]
 		rent = lines[2]
 		location = lines[3]
 		available = lines[4]
+
+		listings.append([house_type_area_m2, layout, rent, location, available])
 
 	return (original_listings < len(listings))
 
