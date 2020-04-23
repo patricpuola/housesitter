@@ -4,6 +4,7 @@ Software environment:
 - Selenium
 - chromedriver (matching to Chrome version)
 - Google Chrome
+- MySQL/MariaDB
 
 Optional:
 - opencage
