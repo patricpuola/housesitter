@@ -47,7 +47,7 @@ def getGeo(query):
 		geo['city'] = result['components']['town']
 
 	return geo
-sys.exit()
+
 # Chrome init
 chrome_path = r"webdrivers/chromedriver.81"
 chrome_options = webdriver.ChromeOptions()
