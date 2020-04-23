@@ -1,3 +1,10 @@
 {
-	"opencage_enabled":true
+   "initial_setup_performed": true,
+   "opencage_enabled": true,
+   "db_host": "localhost",
+   "db_name": "housesitter",
+   "db_unix_socket": "/var/run/mysqld/mysqld.sock",
+   "db_service": "mysql",
+   "db_character_set": "utf8mb4",
+   "db_collation": "utf8mb4_bin"
 }

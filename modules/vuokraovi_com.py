@@ -5,10 +5,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 import os, time
+#import listing from housing
 
 def getListings(driver):
 	driver.get("https://vuokraovi.com")
 	timeout = 5
+
+	listings = []
 
 	try:
 		search_box_present = expected_conditions.presence_of_element_located((By.XPATH, getXpath("search_box")))
@@ -41,13 +44,15 @@ def getListings(driver):
 		os.makedirs(r"ad_shots")
 
 	page_nr = 0
-	while (scrapeResultPage(driver, page_nr)):
+	while (scrapeResultPage(driver, page_nr, listings)):
 		driver.find_element_by_xpath(getXpath("next_result_page")).click()
 		page_nr += 1
 		if (page_nr > 2):
 			break
 
-def scrapeResultPage(driver, page_nr):
+def scrapeResultPage(driver, page_nr, listings):
+	original_listings = len(listings)
+
 	timeout = 5
 	try:
 		results_displayed = expected_conditions.presence_of_element_located((By.CLASS_NAME, "list-item-container"))
@@ -57,22 +62,24 @@ def scrapeResultPage(driver, page_nr):
 	finally:
 		ads = driver.find_elements_by_class_name("list-item-container")
 
-	i = 0
-	ads_scraped = False
 	for ad in ads:
 		location = ad.location_once_scrolled_into_view
-		size = ad.size
 
-		ad_png = open(r'ad_shots/ad_'+str(page_nr)+"_"+str(i)+'.png', 'bw+')
+		img_index = len(listings)
+
+		ad_png = open(r'ad_shots/vuokraovi_com_ad__'+img_index+'.png', 'bw+')
 		ad_png.write(ad.screenshot_as_png)
 		ad_png.close()
 
 		print("\nAd "+str(i)+" of page "+str(page_nr+1)+":")
-		print(ad.text)
-		ads_scraped = True
-		i += 1
+		lines = ad.text.split("\n")
+		house_type, area_m2 = lines[0].split(',',1)
+		layout = lines[1]
+		rent = lines[2]
+		location = lines[3]
+		available = lines[4]
 
-	return ads_scraped
+	return (original_listings < len(listings))
 
 
 def getXpath(item):
