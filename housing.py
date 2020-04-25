@@ -52,7 +52,7 @@ class Cost:
 	PERIOD_YEAR = 2
 	PERIOD_OTHER = 3
 
-	def __init__(type, description, amount_monthly_EUR, period = self.PERIOD_MONTH, period_multiplier = 1):
+	def __init__(type, description, amount_monthly_EUR, period = PERIOD_MONTH, period_multiplier = 1):
 		self.type = type
 		self.description = description
 		self.amount_monthly_EUR = amount_monthly_EUR
