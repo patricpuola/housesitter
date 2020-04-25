@@ -70,5 +70,5 @@ class Cost:
 		if not self.period in [PERIOD_UNDEFINED, PERIOD_MONTH, PERIOD_YEAR, PERIOD_OTHER]:
 			self.period = PERIOD_UNDEFINED
 
-		if self.period != PERIOD_OTHER and self.period_multiplier != 1
+		if self.period != PERIOD_OTHER and self.period_multiplier != 1:
 			self.period_multiplier = 1
