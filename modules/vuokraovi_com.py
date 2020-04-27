@@ -118,7 +118,6 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 	for listing in listings:
 		pprint(listing.__dict__)
 
-	sys.exit()
 	return (original_listings < len(listings))
 
 
