@@ -4,11 +4,14 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
-import os, time
-#import listing from housing
+import sys, os, time
+import setup
+from pprint import pprint
+from housing import Cost, Listing
 
-def getListings(driver):
+def getListings(driver, deep_driver):
 	driver.get("https://vuokraovi.com")
+	deep_driver.get("https://vuokraovi.com")
 	timeout = 5
 
 	listings = []
@@ -24,6 +27,9 @@ def getListings(driver):
 
 	driver.find_element_by_xpath(getXpath("location_deny")).send_keys(Keys.SPACE)
 	driver.find_element_by_xpath(getXpath("cookie")).send_keys(Keys.SPACE)
+
+	deep_driver.find_element_by_xpath(getXpath("location_deny")).send_keys(Keys.SPACE)
+	deep_driver.find_element_by_xpath(getXpath("cookie")).send_keys(Keys.SPACE)
 
 	search_box = driver.find_element_by_xpath(getXpath("search_box"))
 	search_button = driver.find_element_by_xpath(getXpath("search_button"))
@@ -44,13 +50,11 @@ def getListings(driver):
 		os.makedirs(r"ad_shots")
 
 	page_nr = 0
-	while (scrapeResultPage(driver, page_nr, listings)):
+	while (scrapeResultPage(driver, deep_driver, page_nr, listings)):
 		driver.find_element_by_xpath(getXpath("next_result_page")).click()
 		page_nr += 1
-		if (page_nr > 2):
-			break
 
-def scrapeResultPage(driver, page_nr, listings):
+def scrapeResultPage(driver, deep_driver, page_nr, listings):
 	original_listings = len(listings)
 
 	timeout = 5
@@ -62,25 +66,59 @@ def scrapeResultPage(driver, page_nr, listings):
 	finally:
 		ads = driver.find_elements_by_class_name("list-item-container")
 
+	deepScrape = {}
+
 	for ad in ads:
-		location = ad.location_once_scrolled_into_view
+		ad_index = len(listings)
 
-		img_index = len(listings)
+		url = ad.find_elements_by_class_name("list-item-link")[0].get_attribute("href")
 
-		ad_png = open(r'ad_shots/vuokraovi_com_ad_'+str(img_index)+'.png', 'bw+')
-		ad_png.write(ad.screenshot_as_png)
-		ad_png.close()
+		listing = Listing(url)
 
-		print("\nAd "+str(img_index)+" of page "+str(page_nr+1)+":")
+		if (setup.getConfig()['ad_screenshot_enabled'] and len(setup.getConfig()['ad_screenshot_directory']) > 0):
+			ad.location_once_scrolled_into_view # Triggers scroll for screenshotting
+			ad_png = open(r''+setup.getConfig()['ad_screenshot_directory']+'/vuokraovi_com_ad_'+str(ad_index)+'.png', 'bw+')
+			ad_png.write(ad.screenshot_as_png)
+			ad_png.close()
+
 		lines = ad.text.split("\n")
-		house_type_area_m2 = lines[0]
+		house_type_area_m2 = lines[0].split(',', 1)
 		layout = lines[1]
 		rent = lines[2]
 		location = lines[3]
 		available = lines[4]
 
-		listings.append([house_type_area_m2, layout, rent, location, available])
+		if len(house_type_area_m2) == 2:
+			housing_type = house_type_area_m2[0]
+			indoor_size = house_type_area_m2[1]
+		else:
+			housing_type = house_type_area_m2[0]
 
+		listing.fill(ownership_type = Listing.TYPE_OWN_RENTAL, housing_type = housing_type, price = rent, indoor_size_m2 = indoor_size, layout = layout, availability = available)
+
+		listings.append(listing)
+		deepScrape[ad_index] = url
+
+	for ad_index in deepScrape:
+		url = deepScrape[ad_index]
+		deep_driver.get(url)
+		try:
+			accordion_displayed = expected_conditions.presence_of_element_located((By.XPATH, getXpath("deep_accordion")))
+			WebDriverWait(deep_driver, timeout).until(accordion_displayed)
+		except:
+			print("Deep result accordion display timeout")
+		finally:
+			pass
+
+		street_address = deep_driver.find_element_by_xpath(getXpath("deep_street_address")).text
+		zip, city = deep_driver.find_element_by_xpath(getXpath("deep_zip_and_city")).text.split(" ", 1)
+
+		listings[ad_index].fill(street_address = street_address, zip = zip, city = city)
+
+	for listing in listings:
+		pprint(listing.__dict__)
+
+	sys.exit()
 	return (original_listings < len(listings))
 
 
@@ -91,7 +129,10 @@ def getXpath(item):
 		"search_box": """//*[@id="inputLocationOrRentalUniqueNo"]""",
 		"search_button": """//*[@id="frontPageSearchPanelRentalsForm"]/div[4]/div[1]/button""",
 		"search_autofill": """//*[@id="ui-id-1"]""",
-		"next_result_page": """//*[@id="listContent"]/div[3]/div[3]/ul/li[9]/a"""
+		"next_result_page": """//*[@id="listContent"]/div[3]/div[3]/ul/li[9]/a""",
+		"deep_accordion": """//*[@id="accordion"]""",
+		"deep_street_address": """//*[@id="collapseOne"]/div/table/tbody/tr[1]/td/span[1]""",
+		"deep_zip_and_city": """//*[@id="collapseOne"]/div/table/tbody/tr[1]/td/span[2]"""
 	}
 
 	return items[item]

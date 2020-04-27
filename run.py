@@ -1,9 +1,13 @@
 #!/usr/bin/python3
-import sys, os
+import sys, os, time, math
 sys.path.insert(1, r'modules')
 flags = sys.argv
 
+os.popen('pkill chromekiller 2>null')
+os.popen('pkill chrome 2>null')
+
 from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
 import vuokraovi_com
@@ -51,11 +55,30 @@ def getGeo(query):
 # Chrome init
 chrome_path = r"webdrivers/chromedriver.81"
 chrome_options = webdriver.ChromeOptions()
-#chrome_options.add_argument("--headless")
+if conf()['headless']:
+	chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
-driver = webdriver.Chrome(chrome_path, options=chrome_options)
+main_driver = webdriver.Chrome(chrome_path, options=chrome_options)
+deep_driver = webdriver.Chrome(chrome_path, options=chrome_options)
 
-vuokraovi_com.getListings(driver)
+main_driver.set_window_position(0,0)
+deep_driver.set_window_position(0,0)
 
-driver.quit()
+# Window positioning and resizing
+main_driver.maximize_window()
+window_width = main_driver.get_window_size()['width']
+window_height = main_driver.get_window_size()['height']
+
+# Sidebar check
+main_driver.fullscreen_window()
+sidebar_compensation = main_driver.get_window_size()['width']-window_height
+main_driver.fullscreen_window()
+
+main_driver.set_window_rect(height = window_height, width = window_width/2, x = 0, y = 0)
+deep_driver.set_window_rect(height = window_height, width = window_width/2, x = window_width + sidebar_compensation, y = 0)
+
+vuokraovi_com.getListings(main_driver, deep_driver)
+
+main_driver.quit()
+deep_driver.quit()

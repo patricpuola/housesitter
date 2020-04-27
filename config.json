@@ -6,5 +6,8 @@
    "db_unix_socket": "/var/run/mysqld/mysqld.sock",
    "db_service": "mysql",
    "db_character_set": "utf8mb4",
-   "db_collation": "utf8mb4_bin"
+   "db_collation": "utf8mb4_bin",
+   "ad_screenshot_enabled": true,
+   "ad_screenshot_directory": "ad_shots",
+   "headless": false
 }
