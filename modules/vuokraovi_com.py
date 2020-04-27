@@ -4,6 +4,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 import sys, os, time
 import setup
 from pprint import pprint
@@ -89,12 +90,13 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 		available = lines[4]
 
 		if len(house_type_area_m2) == 2:
-			housing_type = house_type_area_m2[0]
-			indoor_size = house_type_area_m2[1]
+			housing_type = house_type_area_m2[0].strip()
+			living_space = house_type_area_m2[1].strip()
 		else:
-			housing_type = house_type_area_m2[0]
+			housing_type = house_type_area_m2[0].strip()
+			living_space = None
 
-		listing.fill(ownership_type = Listing.TYPE_OWN_RENTAL, housing_type = housing_type, price = rent, indoor_size_m2 = indoor_size, layout = layout, availability = available)
+		listing.fill(ownership_type = Listing.TYPE_OWN_RENTAL, housing_type = housing_type, price = rent, living_space_m2 = living_space, layout = layout, availability = available)
 
 		listings.append(listing)
 		deepScrape[ad_index] = url
@@ -110,14 +112,54 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 		finally:
 			pass
 
-		street_address = deep_driver.find_element_by_xpath(getXpath("deep_street_address")).text
-		zip, city = deep_driver.find_element_by_xpath(getXpath("deep_zip_and_city")).text.split(" ", 1)
+		try:
+			description = deep_driver.find_element_by_xpath(getXpath("deep_description")).text
+		except NoSuchElementException:
+			description = None
 
-		listings[ad_index].fill(street_address = street_address, zip = zip, city = city)
+		try:
+			street_address = deep_driver.find_element_by_xpath(getXpath("deep_street_address")).text
+		except NoSuchElementException:
+			street_address = None
+
+		try:
+			zip, city = deep_driver.find_element_by_xpath(getXpath("deep_zip_and_city")).text.split(" ", 1)
+		except NoSuchElementException:
+			zip = None
+			city = None
+
+		try:
+			condition = deep_driver.find_element_by_xpath(getXpath("deep_condition")).text
+		except NoSuchElementException:
+			condition = None
+
+		try:
+			build_year = deep_driver.find_element_by_xpath(getXpath("deep_build_year")).text
+		except NoSuchElementException:
+			build_year = None
+
+		try:
+			total_area = deep_driver.find_element_by_xpath(getXpath("deep_total_area")).text
+		except NoSuchElementException:
+			total_area = None
+
+		try:
+			floor_and_max_floor = deep_driver.find_element_by_xpath(getXpath("deep_floor_and_max_floor")).text.split("/", 1)
+
+			if len(floor_and_max_floor) == 2:
+				floor = floor_and_max_floor[0].strip()
+				floor_max = floor_and_max_floor[1].strip()
+			elif len(floor_and_max_floor) == 1:
+				floor = floor_and_max_floor[0].strip()
+		except NoSuchElementException:
+			floor = None
+			floor_max = None
+
+		listings[ad_index].fill(street_address = street_address, zip = zip, city = city, floor = floor, floor_max = floor_max, condition = condition, total_space_m2 = total_area, build_year = build_year, description = description)
 
 	for listing in listings:
 		pprint(listing.__dict__)
-
+	sys.exit('done for now')
 	return (original_listings < len(listings))
 
 
@@ -131,7 +173,12 @@ def getXpath(item):
 		"next_result_page": """//*[@id="listContent"]/div[3]/div[3]/ul/li[9]/a""",
 		"deep_accordion": """//*[@id="accordion"]""",
 		"deep_street_address": """//*[@id="collapseOne"]/div/table/tbody/tr[1]/td/span[1]""",
-		"deep_zip_and_city": """//*[@id="collapseOne"]/div/table/tbody/tr[1]/td/span[2]"""
+		"deep_zip_and_city": """//*[@id="collapseOne"]/div/table/tbody/tr[1]/td/span[2]""",
+		"deep_floor_and_max_floor": """//th[contains(text(), 'Kerros:')]/following::td""",
+		"deep_condition": """//th[contains(text(), 'Yleiskunto:')]/following::td""",
+		"deep_build_year": """//th[contains(text(), 'Rakennusvuosi:')]/following::td""",
+		"deep_total_area": """//th[contains(text(), 'Kokonaispinta-ala:')]/following::td""",
+		"deep_description": """//*[@id="itempageDescription"]"""
 	}
 
 	return items[item]

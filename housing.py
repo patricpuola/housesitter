@@ -7,18 +7,22 @@ class Cost:
 	TYPE_LAND_RENT = 1
 	TYPE_MAINTENANCE = 2
 	TYPE_FINANCING = 3
+	TYPE_WATER = 4
+	TYPE_ELECTRICITY = 5
 
 	PERIOD_UNDEFINED = 0
 	PERIOD_MONTH = 1
 	PERIOD_YEAR = 2
-	PERIOD_OTHER = 3
+	PERIOD_NON_REOCCURRING = 3
+	PERIOD_OTHER = 4
 
-	def __init__(self, type = TYPE_UNDEFINED, description = "", amount_monthly_EUR = 0.0, period = PERIOD_MONTH, period_multiplier = None):
+	def __init__(self, type = TYPE_UNDEFINED, description = "", amount_monthly_EUR = 0.0, period = PERIOD_MONTH, period_multiplier = None, multiply_per_resident = False):
 		self.type = type
 		self.description = description
 		self.amount_monthly_EUR = amount_monthly_EUR
 		self.period = period
 		self.period_multiplier = period_multiplier
+		self.multiply_per_resident = multiply_per_resident
 
 		self.sanitize()
 
@@ -54,35 +58,23 @@ class Listing:
 		self.city = None
 		self.price = None
 		self.country = self.DEFAULT_COUNTRY
-		self.indoor_size_m2 = None
+		self.description = None
+		self.living_space_m2 = None
 		self.layout = None
-		self.outdoor_size_m2 = None
+		self.total_space_m2 = None
 		self.availability = None
+		self.build_year = None
+		self.floor = None
+		self.floor_max = None
+		self.additional_info = None
+		self.condition = None
 		self.costs = []
 
-	def fill(self, ownership_type = None, housing_type = None, street_address = None, zip = None, city = None, country = None, price = None, indoor_size_m2 = None, layout = None, outdoor_size_m2 = None, availability = None):
-		if ownership_type is not None:
-			self.ownership_type = ownership_type
-		if housing_type is not None:
-			self.housing_type = housing_type.strip()
-		if street_address is not None:
-			self.street_address = street_address.strip()
-		if zip is not None:
-			self.zip = zip
-		if city is not None:
-			self.city = city.strip()
-		if price is not None:
-			self.price = price
-		if country is not None:
-			self.country = country.strip()
-		if indoor_size_m2 is not None:
-			self.indoor_size_m2 = indoor_size_m2
-		if layout is not None:
-			self.layout = layout
-		if outdoor_size_m2 is not None:
-			self.outdoor_size_m2 = outdoor_size_m2
-		if availability is not None:
-			self.availability = availability
+	def fill(self, ownership_type = None, housing_type = None, street_address = None, zip = None, city = None, country = None, price = None, description = None, living_space_m2 = None, layout = None, total_space_m2 = None, availability = None, build_year = None, floor = None, floor_max = None, additional_info = None, condition = None):
+		fill_data = locals()
+		for key in fill_data:
+			if fill_data[key] is not None and key != 'self':
+				setattr(self, key, fill_data[key])
 
 	def sanitize(self):
 		#sanitize all attributes
@@ -92,9 +84,12 @@ class Listing:
 		self.zip = re.sub(r'\D', '', self.zip)
 		self.city = self.city.capitalize()
 		self.city = 'FI' if len(self.city) == 0 else self.city
-		self.indoor_size_m2 = re.sub(r'\D', '', self.indoor_size_m2)
-		self.layout = self.layout #TODO: quantize rooms
-		self.outdoor_size_m2 = re.sub('\D', '', self.outdoor_size_m2)
+		self.living_space_m2 = re.sub(r'\D', '', self.living_space_m2)
+		self.layout = re.sub(r',', '+', re.sub(r'\s', '', self.layout)).upper()
+		self.total_space_m2 = re.sub('\D', '', self.total_space_m2)
+		self.build_year = re.sub(r'\D', '', self.build_year)
+		self.floor = re.sub(r'\D', '', self.floor)
+		self.floor_max = re.sub(r'\D', '', self.floor)
 
 	def addCost(self, new_cost: Cost, check_duplicates = True):
 		if check_duplicates:
