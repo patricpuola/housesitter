@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import re
-from pprint import pprint
+from db import DBCon
 
 class Cost:
 	TYPE_UNDEFINED = 0
@@ -49,8 +49,10 @@ class Listing:
 
 	DEFAULT_COUNTRY = "FI"
 
-	def __init__(self, url):
+	def __init__(self, site, url):
+		self.id = None
 		self.url = url
+		self.site = site
 		self.ownership_type = None
 		self.housing_type = None
 		self.street_address = None
@@ -58,6 +60,7 @@ class Listing:
 		self.city = None
 		self.price = None
 		self.country = self.DEFAULT_COUNTRY
+		self.agency = None
 		self.description = None
 		self.living_space_m2 = None
 		self.layout = None
@@ -65,12 +68,17 @@ class Listing:
 		self.availability = None
 		self.build_year = None
 		self.floor = None
+		self.floor_count = None
 		self.floor_max = None
 		self.additional_info = None
 		self.condition = None
+		self.date_added = None
+		self.date_updated = None
 		self.costs = []
 
-	def fill(self, ownership_type = None, housing_type = None, street_address = None, zip = None, city = None, country = None, price = None, description = None, living_space_m2 = None, layout = None, total_space_m2 = None, availability = None, build_year = None, floor = None, floor_max = None, additional_info = None, condition = None):
+		save()
+
+	def fill(self, ownership_type = None, housing_type = None, street_address = None, zip = None, city = None, country = None, price = None, agency = None, description = None, living_space_m2 = None, layout = None, total_space_m2 = None, availability = None, build_year = None, floor = None, floor_count = None, floor_max = None, additional_info = None, condition = None, date_added = None):
 		fill_data = locals()
 		for key in fill_data:
 			if fill_data[key] is not None and key != 'self':
@@ -89,6 +97,7 @@ class Listing:
 		self.total_space_m2 = re.sub('\D', '', self.total_space_m2)
 		self.build_year = re.sub(r'\D', '', self.build_year)
 		self.floor = re.sub(r'\D', '', self.floor)
+		self.floor_count = re.sub(r'\D', '', self.floor)
 		self.floor_max = re.sub(r'\D', '', self.floor)
 
 	def addCost(self, new_cost: Cost, check_duplicates = True):
@@ -98,3 +107,38 @@ class Listing:
 					return false
 
 		self.costs.append(new_cost)
+
+	def save(self):
+		if self.id is not None:
+			with DBCon.get().cursor() as cursor:
+				cursor.execute("SHOW COLUMNS FROM listings")
+				table_columns = []
+				for column in cursor:
+					if (column["Field"] != "id"):
+						table_columns.append(column["Field"])
+
+				update_sql = "UPDATE listings SET "
+				update_columns = []
+				update_values = []
+
+				for idx in table_columns:
+					column = update_columns[idx]
+					update_columns.append(column+" = %s")
+					update_values.append(getattr(self, column))
+
+				update_sql += ", ".join(update_columns)
+				update_sql += "WHERE id = %s LIMIT 1"
+				update_values.append(self.id)
+				update_value_tuple = tuple(update_values)
+				cursor.execute(update_sql, update_value_tuple)
+
+		else:
+			with DBCon.get().cursor() as cursor:
+				cursor.execute("SELECT id FROM listings WHERE url = %s", self.url)
+				id = cursor.fetchone()
+				if (id is not None):
+					self.id = id
+				else:
+					cursor.execute("INSERT INTO listings (site, url, date_updated) VALUES (%s, %s, NOW())", (self.site, self.url))
+					self.id = cursor.lastrowid
+		return True

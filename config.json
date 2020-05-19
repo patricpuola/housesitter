@@ -7,7 +7,7 @@
    "db_service": "mysql",
    "db_character_set": "utf8mb4",
    "db_collation": "utf8mb4_bin",
-   "ad_screenshot_enabled": true,
-   "ad_screenshot_directory": "ad_shots",
+   "screenshot_enabled": true,
+   "screenshot_directory": "screenshots",
    "headless": false
 }

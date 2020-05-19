@@ -3,13 +3,14 @@ import sys, os, time, math
 sys.path.insert(1, r'modules')
 flags = sys.argv
 
-os.popen('pkill chromekiller 2>null')
-os.popen('pkill chrome 2>null')
+os.popen('pkill chromedriver')
+os.popen('pkill chrome')
 
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
+from SiteScraper import SiteScraper
 import vuokraovi_com
 import setup
 from setup import getConfig as conf
@@ -77,7 +78,6 @@ main_driver.fullscreen_window()
 
 main_driver.set_window_rect(height = window_height, width = window_width/2, x = 0, y = 0)
 deep_driver.set_window_rect(height = window_height, width = window_width/2, x = window_width + sidebar_compensation, y = 0)
-
 vuokraovi_com.getListings(main_driver, deep_driver)
 
 main_driver.quit()

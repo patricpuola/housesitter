@@ -74,11 +74,11 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 
 		url = ad.find_elements_by_class_name("list-item-link")[0].get_attribute("href")
 
-		listing = Listing(url)
+		listing = Listing('vuokraovi.com', url)
 
-		if (setup.getConfig()['ad_screenshot_enabled'] and len(setup.getConfig()['ad_screenshot_directory']) > 0):
+		if (setup.getConfig()['screenshot_enabled'] and len(setup.getConfig()['screenshot_directory']) > 0):
 			ad.location_once_scrolled_into_view # Triggers scroll for screenshotting
-			ad_png = open(r''+setup.getConfig()['ad_screenshot_directory']+'/vuokraovi_com_ad_'+str(ad_index)+'.png', 'bw+')
+			ad_png = open(r''+setup.getConfig()['screenshot_directory']+'/vuokraovi_com_ad_'+str(ad_index)+'.png', 'bw+')
 			ad_png.write(ad.screenshot_as_png)
 			ad_png.close()
 
@@ -144,6 +144,11 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 			total_area = None
 
 		try:
+			agency = deep_driver.find_element_by_xpath(getXpath("deep_agency")).text
+		except NoSuchElementException:
+			agency = None
+
+		try:
 			floor_and_max_floor = deep_driver.find_element_by_xpath(getXpath("deep_floor_and_max_floor")).text.split("/", 1)
 
 			if len(floor_and_max_floor) == 2:
@@ -155,7 +160,7 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 			floor = None
 			floor_max = None
 
-		listings[ad_index].fill(street_address = street_address, zip = zip, city = city, floor = floor, floor_max = floor_max, condition = condition, total_space_m2 = total_area, build_year = build_year, description = description)
+		listings[ad_index].fill(street_address = street_address, zip = zip, city = city, floor = floor, floor_max = floor_max, condition = condition, total_space_m2 = total_area, build_year = build_year, description = description, agency = agency)
 
 	for listing in listings:
 		pprint(listing.__dict__)
@@ -178,7 +183,8 @@ def getXpath(item):
 		"deep_condition": """//th[contains(text(), 'Yleiskunto:')]/following::td""",
 		"deep_build_year": """//th[contains(text(), 'Rakennusvuosi:')]/following::td""",
 		"deep_total_area": """//th[contains(text(), 'Kokonaispinta-ala:')]/following::td""",
-		"deep_description": """//*[@id="itempageDescription"]"""
+		"deep_description": """//*[@id="itempageDescription"]""",
+		"deep_agency": """//*[@id="rentalContactInfo"]/p/b/a"""
 	}
 
 	return items[item]

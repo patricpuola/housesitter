@@ -6,13 +6,24 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 import os, time
 import setup
-from abc import ABC, abstractmethod, abstractproperty
+from db import DBCon
+import housing
 
 
-class SiteScraper(ABC):
-    @abstractproperty
+class SiteScraper:
+    listing_table_name = 'listings'
     ads = []
 
-    @abstractmethod
-    def saveAd():
-        pass
+    def saveAd(self, listing: housing.Listing):
+        with db.get().cursor() as cursor:
+            pass
+
+    @classmethod
+    def getNewListingId(cls):
+        with DBCon.get().cursor() as cursor:
+            cursor.execute("SHOW TABLE STATUS LIKE '"+cls.listing_table_name+"'")
+            result = cursor.fetchone()
+            if result is None:
+                return False
+            else:
+                return result["Auto_increment"]

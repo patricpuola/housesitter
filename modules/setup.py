@@ -69,10 +69,19 @@ def init():
 		else:
 			print("Redoing initial setup")
 
+	depedencyCheck()
 	print("Database and database user setup...")
-	if db.checkUserDB():
+	if checkUserDB():
 		print("Database ok")
 	else:
+		print("User or Database creation error")
+		sys.exit()
+
+	print("Creating tables...")
+	if createTables():
+		print("Tables ok")
+	else:
+		print("Table creation error")
 		sys.exit()
 
 	getConfig()['initial_setup_performed'] = True
@@ -80,8 +89,9 @@ def init():
 	print("\n[ DONE, CONFIG UPDATED ]\n")
 	sys.exit()
 
-def check():
-	print("\n[ HOUSESITTER SETUP CHECK ]")
+def depedencyCheck():
+	import db
+	print("Dependency check...")
 
 	missing_required_packages = []
 	missing_required_modules = []
@@ -125,9 +135,69 @@ def check():
 		print("\t"+', '.join(missing_optional_modules))
 
 	if not status_ready:
-		print("[ SETUP NOK ]")
+		print("Dependencies not OK")
 		print("[ EXIT ]\n")
 		sys.exit()
 	else:
-		print("[ SETUP OK ]\n")
+		print("Dependencies OK\n")
 
+def checkUserDB():
+	from db import DBCon
+	user_creation = "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'" % (getCredentials()['mysql']['username'], getConfig()['db_host'], getCredentials()['mysql']['password'])
+	database_creation = "CREATE DATABASE IF NOT EXISTS %s CHARACTER SET %s COLLATE %s" % (getConfig()['db_name'], getConfig()['db_character_set'], getConfig()['db_collation'])
+	user_grant = "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%s'" % (getConfig()['db_name'], getCredentials()['mysql']['username'], getConfig()['db_host'])
+	flush = "FLUSH PRIVILEGES"
+	'''
+	print("\nUser '%s' or database '%s' does not exist or have sufficient access" % (getCredentials()['mysql']['username'], getConfig()['db_name']))
+	print("Input root password to check and add user and/or database to %s or Ctrl-C to exit and do it manually" % (getConfig()['db_service']))
+	try:
+		root_pwd = input("root password: ")
+	except KeyboardInterrupt:
+		print("Connect to mysql shell and run these commands manually:")
+		print(user_creation)
+		print(database_creation)
+		print(user_grant)
+		print(flush)
+		sys.exit()
+	'''
+	root_pwd = getCredentials()['mysql_root_pwd']
+	root_connection = DBCon.get(user='root', password=root_pwd, db=None, persistent=False)
+
+	if root_connection is False:
+		print("Unable to connect as root, aborting setup")
+		sys.exit()
+
+	try:
+		with root_connection.cursor() as cursor:
+			cursor.execute("SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '%s')" % (getCredentials()['mysql']['username']))
+			user_exists = True if cursor.fetchone()[0] == 1 else False
+
+			if not user_exists:
+				cursor.execute(user_creation)
+
+			cursor.execute(database_creation)
+			cursor.execute(user_grant)
+			cursor.execute(flush)
+
+		root_connection.commit()
+		root_connection.close()
+	except pymysql.Error as e:
+		error_nr, error_text = [e.args[0], e.args[1]]
+		print("PyMySQL Error (%d): %s" % (error_nr, error_text))
+		return False
+
+	return True
+
+def createTables():
+	from db import DBCon
+	table_template_path = r"table_templates"
+	table_templates = [f for f in os.listdir(table_template_path) if os.path.isfile(os.path.join(table_template_path, f))]
+
+
+	for table_template in table_templates:
+		with open(os.path.join(table_template_path, table_template), "r") as template_file:
+			with DBCon.get().cursor() as cursor:
+				cursor.execute(template_file.read())
+				DBCon.get().commit()
+
+	return True
