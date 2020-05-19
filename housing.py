@@ -76,7 +76,7 @@ class Listing:
 		self.date_updated = None
 		self.costs = []
 
-		save()
+		self.save()
 
 	def fill(self, ownership_type = None, housing_type = None, street_address = None, zip = None, city = None, country = None, price = None, agency = None, description = None, living_space_m2 = None, layout = None, total_space_m2 = None, availability = None, build_year = None, floor = None, floor_count = None, floor_max = None, additional_info = None, condition = None, date_added = None):
 		fill_data = locals()

@@ -70,6 +70,12 @@ def init():
 			print("Redoing initial setup")
 
 	depedencyCheck()
+	screenshot_directory = r""+getConfig()['screenshot_directory']
+	if os.path.exists(screenshot_directory) == False:
+		os.makedirs(screenshot_directory)
+		print("Screenshot folder created")
+
+
 	print("Database and database user setup...")
 	if checkUserDB():
 		print("Database ok")
