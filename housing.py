@@ -1,6 +1,7 @@
 #!/usr/bin/python3
-import re
+import re, pymysql
 from db import DBCon
+from pprint import pprint
 
 class Cost:
 	TYPE_UNDEFINED = 0
@@ -45,7 +46,7 @@ class Listing:
 	TYPE_OWN_UNDEFINED = 0
 	TYPE_OWN_RENTAL = 1
 	TYPE_OWN_OWNERSHIP = 2
-	TYPE_OWN_PART_OWNDERSHIP = 3
+	TYPE_OWN_PART_OWNERSHIP = 3
 
 	DEFAULT_COUNTRY = "FI"
 
@@ -86,19 +87,37 @@ class Listing:
 
 	def sanitize(self):
 		#sanitize all attributes
-		if not self.ownership_type in [TYPE_OWN_UNDEFINED, TYPE_OWN_RENTAL, TYPE_OWN_OWNERSHIP, TYPE_OWN_PART_OWNERSHIP]:
-			self.ownership_type = TYPE_OWN_UNDEFINED
+		if not self.ownership_type in [self.TYPE_OWN_UNDEFINED, self.TYPE_OWN_RENTAL, self.TYPE_OWN_OWNERSHIP, self.TYPE_OWN_PART_OWNERSHIP]:
+			self.ownership_type = self.TYPE_OWN_UNDEFINED
 
-		self.zip = re.sub(r'\D', '', self.zip)
-		self.city = self.city.capitalize()
-		self.city = 'FI' if len(self.city) == 0 else self.city
-		self.living_space_m2 = re.sub(r'\D', '', self.living_space_m2)
-		self.layout = re.sub(r',', '+', re.sub(r'\s', '', self.layout)).upper()
-		self.total_space_m2 = re.sub('\D', '', self.total_space_m2)
-		self.build_year = re.sub(r'\D', '', self.build_year)
-		self.floor = re.sub(r'\D', '', self.floor)
-		self.floor_count = re.sub(r'\D', '', self.floor)
-		self.floor_max = re.sub(r'\D', '', self.floor)
+		if self.zip is not None:
+			self.zip = re.sub(r'\D', '', str(self.zip))
+		if self.city is not None:
+			self.city = self.city.capitalize()
+		if self.country is not None:
+			self.country = 'FI'
+		if self.price is not None:
+			print("Original price is: "+str(self.price))
+			self.price = re.sub(r'[^\d,\.]', '', str(self.price))
+			print("Almost new price is: "+str(self.price))
+			self.price = re.sub(r',', '.', self.price)
+			print("New price is: "+str(self.price))
+		if self.living_space_m2 is not None:
+			self.living_space_m2 = re.sub(r'[^\d,\.]', '', str(self.living_space_m2))
+			self.living_space_m2 = re.sub(r',', '.', self.living_space_m2)
+		if self.layout is not None:
+			self.layout = re.sub(r',', '+', re.sub(r'\s', '', str(self.layout))).upper()
+		if self.total_space_m2 is not None:
+			self.total_space_m2 = re.sub(r'[^\d,\.]', '', str(self.total_space_m2))
+			self.total_space_m2 = re.sub(r',', '.', str(self.total_space_m2))
+		if self.build_year is not None:
+			self.build_year = re.sub(r'\D', '', str(self.build_year))
+		if self.floor is not None:
+			self.floor = re.sub(r'\D', '', str(self.floor))
+		if self.floor_count is not None:
+			self.floor_count = re.sub(r'\D', '', str(self.floor_count))
+		if self.floor_max is not None:
+			self.floor_max = re.sub(r'\D', '', str(self.floor_max))
 
 	def addCost(self, new_cost: Cost, check_duplicates = True):
 		if check_duplicates:
@@ -110,6 +129,7 @@ class Listing:
 
 	def save(self):
 		if self.id is not None:
+			self.sanitize()
 			with DBCon.get().cursor() as cursor:
 				cursor.execute("SHOW COLUMNS FROM listings")
 				table_columns = []
@@ -121,23 +141,26 @@ class Listing:
 				update_columns = []
 				update_values = []
 
-				for idx in table_columns:
-					column = update_columns[idx]
-					update_columns.append(column+" = %s")
-					update_values.append(getattr(self, column))
+				for column in table_columns:
+					value = getattr(self, column)
+					if value is not None:
+						print(column+" = "+str(value))
+						update_columns.append("`"+column+"` = %s")
+						update_values.append(value)
 
 				update_sql += ", ".join(update_columns)
-				update_sql += "WHERE id = %s LIMIT 1"
+				update_sql += " WHERE id = %s LIMIT 1"
 				update_values.append(self.id)
 				update_value_tuple = tuple(update_values)
 				cursor.execute(update_sql, update_value_tuple)
 
 		else:
+			# todo: fix this shit
 			with DBCon.get().cursor() as cursor:
 				cursor.execute("SELECT id FROM listings WHERE url = %s", self.url)
-				id = cursor.fetchone()
-				if (id is not None):
-					self.id = id
+				url_listing = cursor.fetchone()
+				if (url_listing is not None):
+					self.id = url_listing["id"]
 				else:
 					cursor.execute("INSERT INTO listings (site, url, date_updated) VALUES (%s, %s, NOW())", (self.site, self.url))
 					self.id = cursor.lastrowid

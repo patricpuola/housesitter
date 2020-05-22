@@ -73,6 +73,7 @@ def init():
 	screenshot_directory = r""+getConfig()['screenshot_directory']
 	if os.path.exists(screenshot_directory) == False:
 		os.makedirs(screenshot_directory)
+		os.chmod(screenshot_directory, 0o777)
 		print("Screenshot folder created")
 
 
@@ -185,7 +186,6 @@ def checkUserDB():
 			cursor.execute(user_grant)
 			cursor.execute(flush)
 
-		root_connection.commit()
 		root_connection.close()
 	except pymysql.Error as e:
 		error_nr, error_text = [e.args[0], e.args[1]]
@@ -204,6 +204,5 @@ def createTables():
 		with open(os.path.join(table_template_path, table_template), "r") as template_file:
 			with DBCon.get().cursor() as cursor:
 				cursor.execute(template_file.read())
-				DBCon.get().commit()
 
 	return True

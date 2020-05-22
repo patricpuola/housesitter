@@ -27,3 +27,8 @@ class SiteScraper:
                 return False
             else:
                 return result["Auto_increment"]
+
+    # Method to try to find and remove blocking popups and ads (ElementClickInterfenrenceException)
+    @classmethod
+    def removeBlocker(cls, driver, target):
+        pass

@@ -20,12 +20,12 @@ class DBCon:
 
 		try:
 			if persistent is True:
-				cls.connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'])
+				cls.connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'], charset='utf8', cursorclass=pymysql.cursors.DictCursor, autocommit=True)
 				if db is not None:
 					cls.connection.select_db(db)
 				return cls.connection
 			else:
-				nonpersistent_connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'])
+				nonpersistent_connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'], charset='utf8', cursorclass=pymysql.cursors.DictCursor, autocommit=True)
 				if db is not None:
 					nonpersistent_connection.select_db(db)
 				return nonpersistent_connection

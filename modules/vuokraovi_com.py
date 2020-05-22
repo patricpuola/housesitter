@@ -13,6 +13,7 @@ from housing import Cost, Listing
 def getListings(driver, deep_driver):
 	driver.get("https://vuokraovi.com")
 	deep_driver.get("https://vuokraovi.com")
+	time.sleep(5)
 	timeout = 5
 
 	listings = []
@@ -47,9 +48,6 @@ def getListings(driver, deep_driver):
 
 	search_button.click()
 
-	if not os.path.exists(r"ad_shots"):
-		os.makedirs(r"ad_shots")
-
 	page_nr = 0
 	while (scrapeResultPage(driver, deep_driver, page_nr, listings)):
 		driver.find_element_by_xpath(getXpath("next_result_page")).click()
@@ -78,25 +76,11 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 
 		if (setup.getConfig()['screenshot_enabled'] and len(setup.getConfig()['screenshot_directory']) > 0):
 			ad.location_once_scrolled_into_view # Triggers scroll for screenshotting
-			ad_png = open(r''+setup.getConfig()['screenshot_directory']+'/vuokraovi_com_ad_'+str(ad_index)+'.png', 'bw+')
+			ad_png = open(r''+setup.getConfig()['screenshot_directory']+'/vuokraovi_com_ad_'+str(listing.id)+'.png', 'bw+')
 			ad_png.write(ad.screenshot_as_png)
 			ad_png.close()
 
-		lines = ad.text.split("\n")
-		house_type_area_m2 = lines[0].split(',', 1)
-		layout = lines[1]
-		rent = lines[2]
-		location = lines[3]
-		available = lines[4]
-
-		if len(house_type_area_m2) == 2:
-			housing_type = house_type_area_m2[0].strip()
-			living_space = house_type_area_m2[1].strip()
-		else:
-			housing_type = house_type_area_m2[0].strip()
-			living_space = None
-
-		listing.fill(ownership_type = Listing.TYPE_OWN_RENTAL, housing_type = housing_type, price = rent, living_space_m2 = living_space, layout = layout, availability = available)
+		listing.fill(ownership_type = Listing.TYPE_OWN_RENTAL)
 
 		listings.append(listing)
 		deepScrape[ad_index] = url
@@ -139,9 +123,9 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 			build_year = None
 
 		try:
-			total_area = deep_driver.find_element_by_xpath(getXpath("deep_total_area")).text
+			total_space_m2 = deep_driver.find_element_by_xpath(getXpath("deep_total_space_m2")).text
 		except NoSuchElementException:
-			total_area = None
+			total_space_m2 = None
 
 		try:
 			agency = deep_driver.find_element_by_xpath(getXpath("deep_agency")).text
@@ -149,21 +133,50 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 			agency = None
 
 		try:
-			floor_and_max_floor = deep_driver.find_element_by_xpath(getXpath("deep_floor_and_max_floor")).text.split("/", 1)
+			housing_type = deep_driver.find_element_by_xpath(getXpath("deep_housing_type")).text
+		except NoSuchElementException:
+			housing_type = None
+
+		try:
+			price = deep_driver.find_element_by_xpath(getXpath("deep_price")).text
+		except NoSuchElementException:
+			price = None
+
+		try:
+			layout = deep_driver.find_element_by_xpath(getXpath("deep_layout")).text
+		except NoSuchElementException:
+			layout = None
+
+		try:
+			availability = deep_driver.find_element_by_xpath(getXpath("deep_availability")).text
+		except NoSuchElementException:
+			availability = None
+
+		try:
+			living_space_m2 = deep_driver.find_element_by_xpath(getXpath("deep_living_space_m2")).text
+		except NoSuchElementException:
+			living_space_m2 = None
+
+		try:
+			floor_and_max_floor_str = deep_driver.find_element_by_xpath(getXpath("deep_floor_and_max_floor")).text
+			floor_and_max_floor = floor_and_max_floor_str.split("/", 1)
 
 			if len(floor_and_max_floor) == 2:
 				floor = floor_and_max_floor[0].strip()
 				floor_max = floor_and_max_floor[1].strip()
 			elif len(floor_and_max_floor) == 1:
 				floor = floor_and_max_floor[0].strip()
+				floor_max = None
 		except NoSuchElementException:
 			floor = None
 			floor_max = None
 
-		listings[ad_index].fill(street_address = street_address, zip = zip, city = city, floor = floor, floor_max = floor_max, condition = condition, total_space_m2 = total_area, build_year = build_year, description = description, agency = agency)
+		listings[ad_index].fill(housing_type = housing_type, street_address = street_address, zip = zip, city = city, price = price, layout = layout, availability = availability, floor = floor, floor_max = floor_max, condition = condition, living_space_m2 = living_space_m2, total_space_m2 = total_space_m2, build_year = build_year, description = description, agency = agency)
+		if (listings[ad_index].save()):
+			print(str(listing.id)+" saved")
 
 	for listing in listings:
-		pprint(listing.__dict__)
+		pass
 	sys.exit('done for now')
 	return (original_listings < len(listings))
 
@@ -182,9 +195,14 @@ def getXpath(item):
 		"deep_floor_and_max_floor": """//th[contains(text(), 'Kerros:')]/following::td""",
 		"deep_condition": """//th[contains(text(), 'Yleiskunto:')]/following::td""",
 		"deep_build_year": """//th[contains(text(), 'Rakennusvuosi:')]/following::td""",
-		"deep_total_area": """//th[contains(text(), 'Kokonaispinta-ala:')]/following::td""",
+		"deep_total_space_m2": """//th[contains(text(), 'Kokonaispinta-ala:')]/following::td""",
 		"deep_description": """//*[@id="itempageDescription"]""",
-		"deep_agency": """//*[@id="rentalContactInfo"]/p/b/a"""
+		"deep_agency": """//*[@id="rentalContactInfo"]/p/b/a""",
+		"deep_housing_type" : """//th[contains(text(), 'Tyyppi:')]/following::td""",
+		"deep_price" : """//th[contains(text(), 'Vuokra:')]/following::td""",
+		"deep_layout" : """//th[contains(text(), 'Kuvaus:')]/following::td""",
+		"deep_availability" : """//th[contains(text(), 'Vapautuminen:')]/following::td""",
+		"deep_living_space_m2" : """//th[contains(text(), 'Asuinpinta-ala:')]/following::td"""
 	}
 
 	return items[item]

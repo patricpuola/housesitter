@@ -54,7 +54,7 @@ def getGeo(query):
 	return geo
 
 # Chrome init
-chrome_path = r"webdrivers/chromedriver.81"
+chrome_path = r"webdrivers/chromedriver.83"
 chrome_options = webdriver.ChromeOptions()
 if conf()['headless']:
 	chrome_options.add_argument("--headless")

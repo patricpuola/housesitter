@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `listings` (
   `agency` varchar(50),
   `description` text,
   `living_space_m2` float(10),
-  `layout` varchar(20),
+  `layout` varchar(50),
   `total_space_m2` float(10),
   `availability` varchar(50),
   `build_year` int(4),
