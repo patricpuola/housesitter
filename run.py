@@ -15,6 +15,7 @@ import vuokraovi_com
 import setup
 from setup import getConfig as conf
 from setup import getCredentials as cred
+from pprint import pprint
 
 if "setup" in flags:
 	setup.init()
@@ -40,21 +41,23 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 main_driver = webdriver.Chrome(chrome_path, options=chrome_options)
 deep_driver = webdriver.Chrome(chrome_path, options=chrome_options)
 
+# Window positioning and resizing
 main_driver.set_window_position(0,0)
 deep_driver.set_window_position(0,0)
 
-# Window positioning and resizing
 main_driver.maximize_window()
 window_width = main_driver.get_window_size()['width']
 window_height = main_driver.get_window_size()['height']
 
-# Sidebar check
+# Sidebar check (Ubuntu)
 main_driver.fullscreen_window()
 sidebar_compensation = main_driver.get_window_size()['width']-window_height
 main_driver.fullscreen_window()
 
 main_driver.set_window_rect(height = window_height, width = window_width/2, x = 0, y = 0)
 deep_driver.set_window_rect(height = window_height, width = window_width/2, x = window_width + sidebar_compensation, y = 0)
+# End of positioning and resizing
+
 vuokraovi_com.getListings(main_driver, deep_driver)
 
 main_driver.quit()
