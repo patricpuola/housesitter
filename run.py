@@ -31,6 +31,13 @@ if conf()['opencage_enabled']:
 		print("'opencage' geocoding not available, install it via pip3 to geocode addresses")
 		conf()['opencage_enabled'] = False
 
+if "geocode" in flags:
+	if conf()['opencage_enabled']:
+		Geocode.checkListings()
+	else:
+		print("Geocoding is currently disabled")
+	sys.exit()
+
 # Chrome init
 chrome_path = r"webdrivers/chromedriver.83"
 chrome_options = webdriver.ChromeOptions()

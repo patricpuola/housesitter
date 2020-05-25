@@ -51,6 +51,9 @@ class Listing:
 
 	DEFAULT_COUNTRY = "FI"
 
+	INIT_FLAGS = b'00000000'
+	GEOCODING_PREFORMED = b'00000001'
+
 	def __init__(self, site, url):
 		self.id = None
 		self.url = url
@@ -59,6 +62,7 @@ class Listing:
 		self.housing_type = None
 		self.street_address = None
 		self.zip = None
+		self.suburb = None
 		self.city = None
 		self.price = None
 		self.country = self.DEFAULT_COUNTRY
@@ -74,13 +78,14 @@ class Listing:
 		self.floor_max = None
 		self.additional_info = None
 		self.condition = None
+		self.flags = self.INIT_FLAGS
 		self.date_added = None
 		self.date_updated = None
 		self.costs = []
 
 		self.save()
 
-	def fill(self, ownership_type = None, housing_type = None, street_address = None, zip = None, city = None, country = None, price = None, agency = None, description = None, living_space_m2 = None, layout = None, total_space_m2 = None, availability = None, build_year = None, floor = None, floor_count = None, floor_max = None, additional_info = None, condition = None, date_added = None):
+	def fill(self, ownership_type = None, housing_type = None, street_address = None, zip = None, suburb = None, city = None, country = None, price = None, agency = None, description = None, living_space_m2 = None, layout = None, total_space_m2 = None, availability = None, build_year = None, floor = None, floor_count = None, floor_max = None, additional_info = None, condition = None, flags = None, date_added = None):
 		fill_data = locals()
 		for key in fill_data:
 			if fill_data[key] is not None and key != 'self':
@@ -95,6 +100,8 @@ class Listing:
 			self.zip = re.sub(r'\D', '', str(self.zip))
 		if self.city is not None:
 			self.city = self.city.capitalize()
+		if self.suburb is not None:
+			self.suburb = self.suburb.capitalize()
 		if self.country is not None:
 			self.country = 'FI'
 		if self.price is not None:
@@ -146,6 +153,8 @@ class Listing:
 				for column in table_columns:
 					value = getattr(self, column)
 					if value is not None:
+						if type(value) is bytes:
+							value = int(value,2)
 						update_columns.append("`"+column+"` = %s")
 						update_values.append(value)
 
@@ -153,6 +162,7 @@ class Listing:
 				update_sql += " WHERE id = %s LIMIT 1"
 				update_values.append(self.id)
 				update_value_tuple = tuple(update_values)
+				print(update_sql % update_value_tuple)
 				cursor.execute(update_sql, update_value_tuple)
 		else:
 			# todo: fix this shit

@@ -2,6 +2,7 @@
 import setup
 from db import DBCon
 from opencage.geocoder import OpenCageGeocode
+from housing import Listing
 
 '''
 [OpenCage Free license]
@@ -40,15 +41,12 @@ class Geocode:
 			cursor.execute("SELECT query, lat, lng, confidence, city, suburb, date_updated FROM geocodes WHERE query = %s LIMIT 1", (query))
 			result = cursor.fetchone()
 			if result is not None:
-				print("cache hit")
 				return result
 			else:
-				print("cache miss")
 				return False
 
 	@classmethod
 	def queryAPI(cls, query):
-		print("api hit")
 		results = cls.geocoder.geocode(query)
 		result = results[0]
 
@@ -85,3 +83,24 @@ class Geocode:
 			cursor.execute("INSERT INTO geocodes ("+", ".join(insert_columns)+") VALUES ("+", ".join(insert_placeholders)+")", values)
 
 		return geo
+
+	@classmethod
+	def checkListings(cls):
+		with DBCon.get().cursor() as cursor:
+			geocoding_preformed_int = int(Listing.GEOCODING_PREFORMED, 2)
+			cursor.execute("SELECT id, street_address, zip, city FROM listings WHERE flags & %s = 0", (geocoding_preformed_int,))
+			addresses = cursor.fetchall()
+			for row in addresses:
+				full_address = row["street_address"]+", "+str(row["zip"])+" "+row["city"]
+				geo = cls.query(full_address)
+				if geo is not False:
+					update_values = []
+					sql_update = "UPDATE listings SET "
+					if geo["suburb"] is not None:
+						sql_update += "suburb = %s, "
+						update_values.append(geo["suburb"])
+					sql_update += "flags = flags | %s WHERE id = %s LIMIT 1"
+					update_values.append(geocoding_preformed_int)
+					update_values.append(row["id"])
+					update_values = tuple(update_values)
+					cursor.execute(sql_update, update_values)

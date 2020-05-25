@@ -6,10 +6,11 @@ CREATE TABLE IF NOT EXISTS `listings` (
   `housing_type` varchar(50),
   `street_address` varchar(50),
   `zip` varchar(10),
+	`suburb` varchar(30),
   `city` varchar(30),
   `price` float(20),
   `country` varchar(50),
-  `agency` varchar(50),
+  `agency` varchar(100),
   `description` text,
   `living_space_m2` float(10),
   `layout` varchar(50),
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `listings` (
   `floor_max` int,
   `additional_info` text,
   `condition` varchar(50),
+	`flags` bit(8) NOT NULL DEFAULT 0,
   `date_added` timestamp NOT NULL DEFAULT "0000-00-00 00:00:00",
   `date_updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP()
 ) ENGINE=INNODB;

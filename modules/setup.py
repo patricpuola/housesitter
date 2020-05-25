@@ -45,7 +45,7 @@ def getCredentials(force = False):
 import db
 
 def isPackageInstalled(package):
-	response = os.popen('apt -qq list %s 2>null' % package).read()
+	response = os.popen('apt -qq list %s 2>/dev/null' % package).read()
 	lines = response.split("\n")
 	for line in lines:
 		if line.find(package) == 0 and line.find('installed') != -1:
