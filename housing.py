@@ -1,6 +1,7 @@
 #!/usr/bin/python3
-import re, pymysql
+import re, pymysql, hashlib, uuid, mimetypes, pathlib, requests
 from db import DBCon
+import setup
 from pprint import pprint
 
 class Cost:
@@ -97,11 +98,8 @@ class Listing:
 		if self.country is not None:
 			self.country = 'FI'
 		if self.price is not None:
-			print("Original price is: "+str(self.price))
 			self.price = re.sub(r'[^\d,\.]', '', str(self.price))
-			print("Almost new price is: "+str(self.price))
 			self.price = re.sub(r',', '.', self.price)
-			print("New price is: "+str(self.price))
 		if self.living_space_m2 is not None:
 			self.living_space_m2 = re.sub(r'[^\d,\.]', '', str(self.living_space_m2))
 			self.living_space_m2 = re.sub(r',', '.', self.living_space_m2)
@@ -118,6 +116,10 @@ class Listing:
 			self.floor_count = re.sub(r'\D', '', str(self.floor_count))
 		if self.floor_max is not None:
 			self.floor_max = re.sub(r'\D', '', str(self.floor_max))
+
+		for attr, value in self.__dict__.items():
+			if type(value) == str and len(value) == 0:
+				setattr(self, attr, None)
 
 	def addCost(self, new_cost: Cost, check_duplicates = True):
 		if check_duplicates:
@@ -144,7 +146,6 @@ class Listing:
 				for column in table_columns:
 					value = getattr(self, column)
 					if value is not None:
-						print(column+" = "+str(value))
 						update_columns.append("`"+column+"` = %s")
 						update_values.append(value)
 
@@ -153,7 +154,6 @@ class Listing:
 				update_values.append(self.id)
 				update_value_tuple = tuple(update_values)
 				cursor.execute(update_sql, update_value_tuple)
-
 		else:
 			# todo: fix this shit
 			with DBCon.get().cursor() as cursor:
@@ -164,4 +164,39 @@ class Listing:
 				else:
 					cursor.execute("INSERT INTO listings (site, url, date_updated) VALUES (%s, %s, NOW())", (self.site, self.url))
 					self.id = cursor.lastrowid
+		return True
+
+	def addImage(self, image_url):
+		extension = pathlib.Path(image_url).suffix
+		mime_types = mimetypes.guess_type(image_url)
+		mime_type = str(mime_types[0])
+		original_filename = pathlib.Path(image_url).name
+		image_obj = requests.get(image_url)
+		image_data = image_obj.content
+		hash_MD5 = hashlib.md5(image_data).hexdigest()
+		image_id = None
+		image_obj.close()
+
+		# Check if image hash found in database
+		with DBCon.get().cursor() as cursor:
+			cursor.execute("SELECT id FROM images WHERE hash_MD5 = %s LIMIT 1", (hash_MD5))
+			found = cursor.fetchone()
+			if found is not None:
+				return False
+
+		with DBCon.get().cursor() as cursor:
+			# Check if image uuid found in database
+			uuid_found = True
+			while uuid_found is not None:
+				image_id = str(uuid.uuid4())
+				cursor.execute("SELECT 1 FROM images WHERE uuid = %s LIMIT 1", (image_id))
+				uuid_found = cursor.fetchone()
+
+		image_file = open(r''+setup.getConfig()['screenshot_directory']+image_id+extension, 'bw+')
+		image_file.write(image_data)
+		image_file.close()
+
+		with DBCon.get().cursor() as cursor:
+			cursor.execute("INSERT INTO images (listing_id, uuid, hash_MD5, extension, mime_type, original_filename, date_added) VALUES (%s, %s, %s, %s, %s, %s, NOW())", (self.id, image_id, hash_MD5, extension, mime_type, original_filename))
+
 		return True

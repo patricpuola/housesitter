@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import sys, os, re, importlib, json, pprint
+import sys, os, re, importlib, json, pprint, pymysql
 
 required_packages = ['mariadb-server']
 optional_packages = []
@@ -176,8 +176,12 @@ def checkUserDB():
 
 	try:
 		with root_connection.cursor() as cursor:
-			cursor.execute("SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '%s')" % (getCredentials()['mysql']['username']))
-			user_exists = True if cursor.fetchone()[0] == 1 else False
+			cursor.execute("SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '%s') as user_found" % (getCredentials()['mysql']['username']))
+			result = cursor.fetchone()
+			if result["user_found"] == 1:
+				user_exists = True
+			else:
+				user_exists = False
 
 			if not user_exists:
 				cursor.execute(user_creation)

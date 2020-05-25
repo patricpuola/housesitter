@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<head>
+
+<!-- Basic Page Needs
+================================================== -->
+<meta charset="utf-8">
+<title>Kohteet - Kotijoukkue.fi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta property="og:title" content="Kohteet - Kotijoukkue.fi" />
+<meta property="og:url" content="https://www.kotijoukkue.fi/kohteet/" />
+
+
+<meta name="twitter:card" content="summary" />
+<!-- CSS
+================================================== -->
+<link rel="stylesheet" href="/site/templates/findeo/style.css?v=12">
+<link rel="stylesheet" href="/site/templates/findeo/colors/kotijoukkue.css?v=9" id="colors">
+<link rel="stylesheet" href="/site/templates/styles/main.css?v=1">
+<!-- CSS file -->
+<link rel="stylesheet" href="/site/templates/styles/bootstrap-modal.css">
+<link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"/>
+<link rel="stylesheet" href="https://unpkg.com/bootstrap-slider@latest/dist/css/bootstrap-slider.css">
+<link href="https://unpkg.com/vue-bootstrap-typeahead/dist/VueBootstrapTypeahead.css" rel="stylesheet">
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-137257234-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-137257234-1');
+</script>
+
+</head>
+
+<body id="layout" class="">
+
+<!-- Wrapper -->
+<div id="wrapper">
+
+
+<!-- Header Container
+================================================== -->
+<header id="header-container">
+	
+
+	<!-- Header -->
+	<div id="header" class="default">
+    <div class="container">
+        
+        <!-- Left Side Content -->
+        <div class="full-side">
+            
+            <!-- Logo -->
+            <div id="logo">
+            
+                <a href="/"><img src="/site/templates/images/logo.png" alt=""></a>
+                            </div>
+
+            
+            <!-- Mobile Navigation -->
+            <div class="mmenu-trigger">
+                <button class="hamburger hamburger--collapse" type="button">
+                    <span class="hamburger-box">
+                        <span class="hamburger-inner"></span>
+                    </span>
+                </button>
+            </div>
+            
+            
+            <!-- Main Navigation -->
+            <nav id="navigation" class="mmenu-start style-1">
+                <ul id="responsive">
+
+                                        					<li>
+                        
+                        <a href="#">Myymässä</a>
+                        <ul>
+                                                        <li><a href='/ostotoimeksiannot/'>Ostotoimeksiannot - ei kuluja myyjälle</a></li>
+                            																	<li><a href='/sisaltosivut/tilaa-maksuton-myyntiarviokaynti/'>Asunnon hinta-arvio</a></li>
+																	<li><a href='/sisaltosivut/asuntokaupassa-alku-ratkaisee/'>Asuntosi myynti ja markkinointi</a></li>
+																	<li><a href='/sisaltosivut/hinnasto/'>Hinnasto</a></li>
+																	<li><a href='/sisaltosivut/toiminta-koronavirustilanteessa/'>Asunnon myynti onnistuu myös poikkeuksellisissa olosuhteissa – turvallisesti ja digitaalisesti!</a></li>
+																	<li><a href='/sisaltosivut/kirjalliset-aka-arviot/'>Asiantuntevat arviointipalvelut</a></li>
+																
+					
+							</ul>
+						
+
+					</li>
+					                    					<li>
+                        
+                        <a href="#">Ostamassa</a>
+                        <ul>
+                                                    <li><a href='/kohteet/?status_code=1041&q='>Etsi asuntoja</a></li>
+
+                            <li><a href='/kohteet/?status_code=1041&realtype%5B%5D=liiketila&q='>Liiketilat</a></li>
+                        																	<li><a href='/sisaltosivut/asuntovahti/'>Etsitkö uutta kotia - Tee Kotijoukkueen Asuntovahti</a></li>
+																	<li><a href='/sisaltosivut/ostotoimeksianto/'>Ostotoimeksianto</a></li>
+																	<li><a href='/sisaltosivut/ostajan-opas/'>Ostajan opas</a></li>
+																
+					
+							</ul>
+						
+
+					</li>
+					                                            <li><a href='/uudiskohteet/'>Uudiskohteet</a></li>
+                    					<li>
+                        
+                        <a href="#">Vuokraamassa</a>
+                        <ul>
+                                                    <li><a href='/kohteet/?status_code=1042&q='>Etsi vuokra-asuntoa</a></li>
+                            <li><a href='/kohteet/?status_code=1042&realtype%5B%5D=liiketila&q='>Liiketilat</a></li>
+                        																	<li><a href='/sisaltosivut/vuokra-asuntohakemus/'>Vuokra-asuntohakemus</a></li>
+																	<li><a href='/sisaltosivut/vapaat-vuokra-asunnot/'>Vapaat vuokra-asunnot</a></li>
+																	<li><a href='/sisaltosivut/toimitilat/'>Toimitilat</a></li>
+																	<li><a href='/sisaltosivut/asuntovahti/'>Etsitkö uutta kotia - Tee Kotijoukkueen Asuntovahti</a></li>
+																
+					
+							</ul>
+						
+
+					</li>
+					                    					<li>
+                        
+                        <a href="#">Vuokranantaja</a>
+                        <ul>
+                        																	<li><a href='/sisaltosivut/vuokrauspalvelut/'>Vuokranantajalle</a></li>
+																
+					
+							</ul>
+						
+
+					</li>
+					                    					<li>
+                        
+                        <a href="#">Meille töihin</a>
+                        <ul>
+                        																	<li><a href='/sisaltosivut/valittajaksi-kotijoukkueeseen/'>Välittäjäksi</a></li>
+																	<li><a href='/sisaltosivut/ryhdy-yrittajaksi/'>Yrittäjäksi</a></li>
+																
+					
+							</ul>
+						
+
+					</li>
+					                    <li>
+                        <a href="#">Toimistot</a>
+                        <ul>
+                            <li><a href='/espoo/'>Espoo</a></li><li><a href='/hameenlinna/'>Hämeenlinna</a></li><li><a href='/helsinki/'>Helsinki</a></li><li><a href='/hyvinkaa/'>Hyvinkää</a></li><li><a href='/jyvaskyla/'>Jyväskylä</a></li><li><a href='/kouvola/'>Kouvola</a></li><li><a href='/lahti/'>Lahti</a></li><li><a href='/mikkeli/'>Mikkeli</a></li><li><a href='/paakaupunkiseutu/'>Pääkaupunkiseutu</a></li><li><a href='/pori/'>Pori</a></li><li><a href='/rauma/'>Rauma</a></li><li><a href='/seinajoki/'>Seinäjoki</a></li><li><a href='/tampere/'>Tampere</a></li><li><a href='/turku/'>Turku</a></li><li><a href='/vaasa/'>Vaasa</a></li><li><a href='/vantaa/'>Vantaa</a></li>                        </ul>
+					</li>
+                </ul>
+            </nav>            
+            <div class="clearfix"></div>
+            <!-- Main Navigation / End -->
+            
+        </div>
+        <!-- Left Side Content / End -->
+
+
+    </div>
+</div>
+<!-- Header / End -->
+</header>
+<div class="clearfix"></div>
+<!-- Header Container / End -->
+
+
+
+
+<div id="" class="container padding-top-40">
+    <div class="row">
+        <div class="col-md-12">
+            
+                        <!-- Content
+================================================== -->
+<div id="app">
+	<template>
+		<div class="form-group row estateSearch">
+          <div class="col-md-12">
+            <div class="filterTitle">
+              Hae kohteita:
+            </div>
+            <input name="q" id='estate-search-input' v-model="location.q" v-on:keyup="setPreview()" v-on:keyup.esc="hideCitySearch()" v-on:keyup.enter="updateCitySearch()" v-on:keyup.up="cityUp()" v-on:keyup.down="cityDown()" placeholder='Etsi paikkakunnan, postinumeron tai kohdenumeron avulla' />
+            <div v-if="preview" id="estate-search-results">
+              <div v-for="(item, index) in filteredCities">
+                <span v-on:click="setActive(index)" class="item" :class="{'activeCity': activeCity === index + 1}">{{ item.title }} ({{item.count}} kpl)</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-12 filtersContainer">
+              <div class="filterTitle">
+                Suodata hakua:
+              </div>
+              <div>
+                <div class="filterBtn" v-bind:class="{ active: statusCodeActive }" class="mx-2" @click="openModal('statuscodemodal')">
+                  <span v-if="!statusCodeActive">Myynti ja vuokrakohteet</span>
+                  <span v-else-if="status_code==1041">Vain myyntikohteet</span>
+                  <span v-else-if="status_code==1042">Vain vuokrakohteet</span>
+                  <div class="filterModal" v-show="activeModal === 'statuscodemodal'">
+                    <div class="filterOptions">
+                      <div class="optionBtn" v-for="(item, index) in status_codes" @click="setStatusCode(item.value)">
+                        <span>{{ item.text }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="filterBtn filterBtnRange" v-bind:class="{ active: priceActive }" class="mx-2" @click="openModal('pricemodal', 'range')">
+                  <span v-if="!priceActive">Hinta</span>
+                  <span v-else>{{ formatPrice(price[0]) }}€ - {{ formatPrice(price[1]) }}€</span>
+                  <div class="filterModal filterModalRange filterModalPrice" v-show="activeModal === 'pricemodal'">
+                    <div class="filterRange">
+                      <div class="row">
+                        <div class="rangeContainer">
+                          <span class="start">min</span>
+                          <b-form-slider ref="range" v-model="price" range :min="10000" :max="2000000" :step="10000" @slide-stop="setPrice" @slide-start="setActiveButton('priceActive')" trigger-change-event></b-form-slider>
+                          <span class="end">max</span>
+                        </div>
+                      </div>
+                    <b-button class="mx-2 empty" block @click="removePrice">Tyhjennä</b-button>
+                    <b-button class="mx-2 submit" block @click="setActiveButton('priceActive', true)">Aseta</b-button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="filterBtn filterBtnRange" v-bind:class="{ active: areaActive }" class="mx-2" @click="openModal('areamodal', 'range')">
+                  <span v-if="!areaActive">Asuinpinta-ala</span>
+                  <span v-else>{{ area[0] }}m<sup>2</sup> - {{area[1]}}m<sup>2</sup></span>
+                  <div class="filterModal filterModalRange filterModalArea" v-show="activeModal === 'areamodal'">
+                    <div class="filterRange">
+                      <div class="row">
+                        <div class="rangeContainer">
+                          <span class="start">20m<sup>2</sup></span>
+                            <b-form-slider ref="range" v-model="area" range :min="20" :max="600" :step="10" @slide-stop="setArea" @slide-start="setActiveButton('areaActive')" trigger-change-event></b-form-slider>
+                          <span class="end">600m<sup>2</sup></span>
+                        </div>
+                      </div>
+                    <b-button class="mx-2 empty" block @click="removeArea">Tyhjennä</b-button>
+                    <b-button class="mx-2 submit" block @click="setActiveButton('areaActive', true)">Aseta</b-button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="filterBtn filterBtnRange" v-bind:class="{ active: roomsActive }" class="mx-2" @click="openModal('roomsmodal', 'range')">
+                  <span v-if="!roomsActive">Huoneita</span>
+                  <span v-else>{{ rooms[0] }}h - {{ rooms[1] }}h</span>
+                  <div class="filterModal filterModalRange filterModalRooms" v-show="activeModal === 'roomsmodal'">
+                    <div class="filterRange">
+                      <div class="row">
+                        <div class="rangeContainer">
+                          <span class="start">1h</span>
+                          <b-form-slider ref="range" v-model="rooms" range :min="1" :max="12" @slide-stop="setRooms" @slide-start="setActiveButton('roomsActive')" trigger-change-event></b-form-slider>
+                          <span class="end">12h</span>
+                        </div>
+                      </div>
+                      <b-button class="mx-2 empty" block @click="removeRooms">Tyhjennä</b-button>
+                    <b-button class="mx-2 submit" block @click="setActiveButton('roomsActive', true)">Aseta</b-button>
+                    </div>
+                  </div>
+                </div>
+
+      <div class="filterBtn" v-bind:class="{ active: roomtypeActive }" class="mx-2" @click="openModal('roomtypemodal')">
+                  <span v-if="!roomtypeActive">Huoneistotyyppi</span>
+                  <span v-else>
+                    <span v-for="(v, i) in roomtype">{{v | capitalize}} </span>
+                  </span>
+                  <div class="filterModal" v-show="activeModal === 'roomtypemodal'">
+                    <div class="filterOptions checkboxes">
+                      <div v-bind:class="{ 'activeCheckbox': roomtype.indexOf(item.value) !== -1 }" class="optionBtn checkbox" v-for="(item, index) in roomtypes" @click="setRoomType(item.value)">
+                        <span >{{ item.text }}</span>
+                      </div>
+                    </div>
+                  </div>
+      </div>
+      <div class="filterBtn" v-bind:class="{ active: typeActive }" class="mx-2" @click="openModal('typemodal')">
+                  <span v-if="!typeActive">Uudiskohteet</span>
+                  <span v-else-if="type=='new-estate-apartment'">Vain uudiskohteet</span>
+                  <span v-else>Ei uudiskohteita</span>
+                  <div class="filterModal" v-show="activeModal === 'typemodal'">
+                    <div class="filterOptions">
+                      <div class="optionBtn" v-for="(item, index) in types" @click="setType(item.value)">
+                        <span>{{ item.text }}</span>
+                      </div>
+                    </div>
+                  </div>
+      </div>
+              </div>
+          </div>
+        </div>
+        <b-modal v-model="pricemodal" title="Hinta" hide-footer centered >
+          <div class="d-block text-center">
+            <b-form-slider ref="range" v-model="price" range :min="10000" :max="1000000" :step="10000" trigger-change-event></b-form-slider>
+            <p>Minimihinta {{ formatPrice(price[0]) }}€ - Maksimihinta {{ formatPrice(price[1]) }}€</p>
+          </div>
+          <b-container class="bv-row bv-row-flex-cols">
+            <b-row align-v="center">
+              <b-button class="mx-2" variant="outline-danger" block @click="setPrice">Aseta</b-button>
+              <b-button class="mx-2" variant="outline-danger" block @click="removePrice">Poista</b-button>
+            </b-row>
+          </b-container>
+        </b-modal>
+        <b-modal v-model="areamodal" title="Asuinpinta-ala" hide-footer centered >
+          <div class="d-block text-center">
+            <b-form-slider ref="range" v-model="area" range :min="20" :max="600" :step="10" trigger-change-event></b-form-slider>
+            <p>Minimi asuinpinta-ala {{ area[0] }}<sup>2</sup> - Maksimi asuinpinta-ala {{area[1]}}<sup>2</sup></p>
+          </div>
+          <b-container class="bv-row bv-e-row-flex-cols">
+            <b-row align-v="center">
+              <b-button class="mx-2" variant="outline-danger" block @click="setArea">Aseta</b-button>
+              <b-button class="mx-2" variant="outline-danger" block @click="removeArea">Poista</b-button>
+            </b-row>
+          </b-container>
+        </b-modal>
+        <b-modal v-model="roomsmodal" title="Huoneita" hide-footer centered >
+          <div class="d-block text-center">
+            
+          </div>
+          <b-container class="bv-row bv-e-row-flex-cols">
+            <b-row align-v="center">
+              <b-button class="mx-2" variant="outline-danger" block @click="setRooms">Aseta</b-button>
+              <b-button class="mx-2" variant="outline-danger" block @click="removeRooms">Poista</b-button>
+            </b-row>
+          </b-container>
+        </b-modal>				
+			<div class="row fullwidth-layout">
+				
+				<!-- loading div -->
+				<div class="col-md-5"></div>
+				<div class="col-md-2">
+					<div id="loader" class="lds-ellipsis" v-if="loader"><div></div><div></div><div></div><div></div></div>
+					<span v-if="!loader">
+						<p v-if="!resultCount" class="text-centered">Ei hakutuloksia</p>
+					</span>
+				</div>
+				<div class="col-md-5"></div>
+				
+				<div class="col-md-12">
+								
+					<!-- Sorting / Layout Switcher 
+					<div class="row margin-bottom-15">
+
+						<div class="col-md-6"></div>
+
+						<div class="col-md-6">
+							<div class="layout-switcher">
+								<a href="#" class="grid-three"><i class="fa fa-th"></i></a>
+								<a href="#" class="grid"><i class="fa fa-th-large"></i></a>
+								<a href="#" class="list"><i class="fa fa-th-list"></i></a>
+							</div>
+						</div>
+					</div>
+					-->
+							
+					<!-- Listings -->
+					<div class="listings-container grid-layout-three">
+						
+							<!-- Listing Item -->
+				      <div class="listing-item" v-for="item in paginate">
+
+				        	<span class="listing-img-container">
+								<div class="listing-badges">
+									<!--span class="featured">Featured</span //-->
+									<span>{{item.status}}</span>
+								</div>
+
+								<div class="listing-img-content">
+									<span class="listing-price"><span v-if="item.rent && item.status =='Vuokrattavana'">{{ formatPrice(item.rent) }}€ / kk</span><span v-if="item.unencumbered_price && item.status =='Myytävänä'">{{ formatPrice(item.unencumbered_price) }}€</span><span v-if="(item.unencumbered_price && item.flattype && item.flattype !== 'ei luokiteltu') || (item.rent && item.flattype && item.flattype !== 'ei luokiteltu')">,</span> <span v-if="item.flattype && item.flattype !== 'ei luokiteltu'">{{item.flattype}}</span></span>
+								</div>
+
+								<div class="listing-carousel">
+									<div v-for="pic in item.kuvat"><img v-bind:src="pic.url" alt=""></div>
+								</div>
+							</span>
+				        					
+				        	<div class="listing-content">
+
+				        		<div class="listing-title">
+				        			<h4><a v-bind:href="item.url">{{item.address}}<br />
+				        				{{item.postcode}} {{item.town}}
+				        			</a></h4>
+
+				        			<a v-bind:href="item.url" class="button border">Tutustu kohteeseen</a>
+				        		</div>
+
+				        		<ul class="listing-details">
+									<li>{{item.living_area_m2}} m<sup>2</sup></li>
+									<li>{{item.rc_buildyear}}</li>
+									<!--<li>Kerros: {{item.apartment_floor}}</li>-->
+				        			<!--<li>Kerroksia: {{item.total_floors}}</li>-->
+									<li>Kunto: {{ item.condition_class}}</li>
+				        		</ul>
+							</div>
+
+						</div>
+						<!-- Listing Item / End -->
+							 
+					</div>
+					<!-- Listings Container / End -->
+
+					<div class="clearfix"></div>
+					<!-- Pagination -->
+							
+					<div v-if="totalPages > 1" class="pagination-container margin-top-20">
+	
+						<nav class="pagination">
+							<ul>
+								<li v-for="pageNumber in totalPages">
+								<a v-bind:key="pageNumber" href="#" @click="setPage(pageNumber)" :class="{current: currentPage === pageNumber}">{{ pageNumber }}</a>
+							</li>
+							</ul>
+						</nav>
+								
+					</div>
+					<!-- Pagination / End -->
+					
+				</div>
+		<!-- col end //-->
+			</div>
+	</template>
+</div>        </div>
+    </div>
+</div>
+
+
+<!-- Footer
+================================================== -->
+<div class="margin-top-55"></div>
+<div id="footer" class="sticky-footer">
+	<!-- Main -->
+	<div class="container">
+		<div class="row">
+			<div class="col-md-5 col-sm-6">
+				<img class="footer-logo" src="/site/templates/images/logo.png" alt="">
+				<br><br>
+				<p><p>Tulokset ratkaisevat.</p></p>
+			</div>
+
+			<div class="col-md-4 col-sm-6 ">
+									
+						<h4>Lisää Kotijoukkueesta</h4>
+						<ul class="footer-links">
+															<li><a href='/sisaltosivut/tietoa-kotijoukkueesta/'>Kotijoukkue-ketju</a></li>
+															<li><a href='/sisaltosivut/kotijoukkue-ketjun-johto/'>Kotijoukkue-ketjun johto</a></li>
+															<li><a href='/sisaltosivut/tietosuoja/'>Kotijoukkue-ketjun tietosuojaselosteet</a></li>
+													</ul>
+						<div class="clearfix"></div>
+									
+			</div>		
+
+			<div class="col-md-3  col-sm-12">
+				<h4>Yhteystiedot</h4>
+				<div class="text-widget">
+									</div>
+
+				<ul class="social-icons margin-top-20">
+					<li><a class="facebook" href="https://www.facebook.com/kotijoukkue/"><i class="icon-facebook"></i></a></li>
+				</ul>
+
+			</div>
+
+		</div>
+		
+		<!-- Copyright -->
+		<div class="row">
+			<div class="col-md-12">
+				<div class="copyrights">© Kotijoukkue</div>
+			</div>
+		</div>
+
+	</div>
+
+</div>
+<!-- Footer / End -->
+
+
+<!-- Back To Top Button -->
+<div id="backtotop"><a href="#"></a></div>
+
+
+<!-- Scripts
+================================================== -->
+<script type="text/javascript" src="/site/templates/findeo/scripts/jquery-2.2.0.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/chosen.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/magnific-popup.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/owl.carousel.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/rangeSlider.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/sticky-kit.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/slick.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/masonry.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/mmenu.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/tooltips.min.js"></script>
+<script type="text/javascript" src="/site/templates/findeo/scripts/custom.js"></script>
+<script type="text/javascript" src="/site/templates/data/cityresults.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vue/dist/vue.min.js"></script>
+<script type="text/javascript" src="//unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
+<script type="text/javascript" src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
+<script>$.fn.slider = null</script>
+<script type="text/javascript" src="https://unpkg.com/bootstrap-slider@latest/dist/bootstrap-slider.js"></script>
+<script type="text/javascript" src="https://unpkg.com/vue-bootstrap-slider@latest/dist/vue-bootstrap-slider.js"></script>
+<script type="text/javascript" src="https://unpkg.com/vue-bootstrap-typeahead"></script>
+<script type="text/javascript" src="https://unpkg.com/vue-router@3.0.1/dist/vue-router.js"></script>
+<script type="text/javascript" src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script type="text/javascript" src="/site/templates/scripts/app-dist.js?v=3"></script>
+
+
+
+</div>
+<!-- Wrapper / End -->
+
+<script type="text/javascript" src="//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-5c99fe6c07b209db"></script>	
+<script src="https://cdn.adfenix.com/tracker.js" async></script>
+</body>
+</html>

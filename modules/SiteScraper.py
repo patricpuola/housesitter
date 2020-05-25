@@ -9,7 +9,6 @@ import setup
 from db import DBCon
 import housing
 
-
 class SiteScraper:
     listing_table_name = 'listings'
     ads = []

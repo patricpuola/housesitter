@@ -5,7 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-import sys, os, time
+import sys, os, time, re
 import setup
 from pprint import pprint
 from housing import Cost, Listing
@@ -71,6 +71,7 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 		ad_index = len(listings)
 
 		url = ad.find_elements_by_class_name("list-item-link")[0].get_attribute("href")
+		url = re.sub('\?.*$', '', url)
 
 		listing = Listing('vuokraovi.com', url)
 
@@ -172,8 +173,17 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 			floor_max = None
 
 		listings[ad_index].fill(housing_type = housing_type, street_address = street_address, zip = zip, city = city, price = price, layout = layout, availability = availability, floor = floor, floor_max = floor_max, condition = condition, living_space_m2 = living_space_m2, total_space_m2 = total_space_m2, build_year = build_year, description = description, agency = agency)
-		if (listings[ad_index].save()):
-			print(str(listing.id)+" saved")
+		listings[ad_index].save()
+
+		# Fetch images
+		try:
+			image_gallery_link = deep_driver.find_element_by_xpath(getXpath("deep_image_gallery_link")).get_attribute('href')
+			deep_driver.get(image_gallery_link)
+			image_elements = deep_driver.find_elements_by_css_selector(".show-images__images > a")
+			for image in image_elements:
+				listings[ad_index].addImage(image.get_attribute('href'))
+		except NoSuchElementException:
+			pass
 
 	for listing in listings:
 		pass
@@ -202,7 +212,8 @@ def getXpath(item):
 		"deep_price" : """//th[contains(text(), 'Vuokra:')]/following::td""",
 		"deep_layout" : """//th[contains(text(), 'Kuvaus:')]/following::td""",
 		"deep_availability" : """//th[contains(text(), 'Vapautuminen:')]/following::td""",
-		"deep_living_space_m2" : """//th[contains(text(), 'Asuinpinta-ala:')]/following::td"""
+		"deep_living_space_m2" : """//th[contains(text(), 'Asuinpinta-ala:')]/following::td""",
+		"deep_image_gallery_link" : """//strong[contains(text(), 'Katso kaikki kuvat')]/parent::a"""
 	}
 
 	return items[item]
