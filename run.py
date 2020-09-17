@@ -39,7 +39,9 @@ if "geocode" in flags:
 	sys.exit()
 
 # Chrome init
-chrome_path = r"webdrivers/chromedriver.83"
+BROWSER = 'chrome'
+
+chrome_path = setup.getWebDriverPath(BROWSER)
 chrome_options = webdriver.ChromeOptions()
 if conf()['headless']:
 	chrome_options.add_argument("--headless")
@@ -56,10 +58,11 @@ main_driver.maximize_window()
 window_width = main_driver.get_window_size()['width']
 window_height = main_driver.get_window_size()['height']
 
-# Sidebar check (Ubuntu)
-main_driver.fullscreen_window()
-sidebar_compensation = main_driver.get_window_size()['width']-window_height
-main_driver.fullscreen_window()
+# Sidebar check (Ubuntu) (tested as unnecessary in chromedriver.85)
+#main_driver.fullscreen_window()
+#sidebar_compensation = main_driver.get_window_size()['width']-window_height
+#main_driver.fullscreen_window()
+sidebar_compensation = 0
 
 main_driver.set_window_rect(height = window_height, width = window_width/2, x = 0, y = 0)
 deep_driver.set_window_rect(height = window_height, width = window_width/2, x = window_width + sidebar_compensation, y = 0)

@@ -1,14 +1,87 @@
 #!/usr/bin/python3
-import sys, os, re, importlib, json, pprint, pymysql
+import sys, os, re, importlib, json, pprint, pymysql, requests, wget, pwd, grp, stat
+from bs4 import BeautifulSoup
+from zipfile import ZipFile
 
-required_packages = ['mariadb-server']
+required_packages = ['mariadb-server', 'wget']
 optional_packages = []
 
-required_modules = ['selenium', 'pymysql']
+required_modules = ['selenium', 'pymysql', 'beautifulsoup4']
 optional_modules = ['opencage']
 
 config = None
 credentials = None
+
+TMP_DIR = "/tmp/"
+WEBDRIVER_DIR = r"webdrivers/"
+webdrivers = {
+	'chrome': {
+		'url': 'https://chromedriver.chromium.org/',
+		'download_url': 'https://chromedriver.storage.googleapis.com/',
+		'package': 'google-chrome-stable'
+	},
+	'firefox': {
+		'url': 'tba', # TODO
+		'package': 'firefox'
+	}
+}
+
+def fixFileOwnerAndMode(filepath):
+	uid = pwd.getpwnam(getConfig()['user']).pw_uid
+	gid = grp.getgrnam(getConfig()['group']).gr_gid
+	os.chown(filepath, uid, gid)
+	os.chmod(filepath, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+	return True
+
+def getWebDriverPath(browser):
+	if not isinstance(browser, str):
+		print("""getWebDriverPath(browser) parameter is not a string""")
+		sys.exit()
+	browser = browser.lower()
+	valid_browsers = ['chrome', 'firefox']
+	if browser.lower() not in valid_browsers:
+		print("""{} is not a valid browser""".format(browser))
+		sys.exit()
+	download_url = None
+	if browser == 'chrome':
+			package_version = getPackageVersion(webdrivers[browser]['package'])
+			main_version = parseWebDriverMainVersion(package_version)
+			webdriver_file = "chromedriver." + main_version
+			if not os.path.exists(WEBDRIVER_DIR + webdriver_file):
+				main_page_html = requests.get(webdrivers[browser]['url'] + 'downloads').text
+				soup = BeautifulSoup(main_page_html, 'html.parser')
+				for link in soup.find_all('a', href=True, text=re.compile(r'ChromeDriver ' + main_version)):
+					full_version = str(re.search(r"[\d\.]+", link.text)[0])
+					download_url = webdrivers[browser]['download_url'] + full_version + '/chromedriver_linux64.zip'
+					break
+			else:
+				return WEBDRIVER_DIR + webdriver_file
+	elif browser == 'firefox':
+		# TODO
+		pass
+
+	if (download_url == None):
+		print("{} WebDriver missing, cannot find download link. Please download WebDriver manually".format(browser))
+		sys.exit()
+	
+	print("Webdriver missing for current version of {}, downloading matching one".format(browser))
+	tmp_zip = TMP_DIR + browser + "driver.zip"
+	wget.download(download_url, tmp_zip)
+	with ZipFile(tmp_zip, 'r') as zipObject:
+		for filename in zipObject.namelist():
+			if (filename.endswith('driver')):
+				with open(WEBDRIVER_DIR + webdriver_file, "wb") as webdriver_handle:
+					webdriver_handle.write(zipObject.read(filename))
+				fixFileOwnerAndMode(WEBDRIVER_DIR + webdriver_file)
+
+	
+	if not os.path.exists(WEBDRIVER_DIR + webdriver_file):
+		print("Something is wrong with downloaded zip file, driver file not found in {}".format(tmp_zip))
+	else:
+		return r"" + WEBDRIVER_DIR + webdriver_file
+
+def parseWebDriverMainVersion(version_str):
+	return str(re.search(r"^[\d]+", version_str.strip())[0])
 
 def getConfig(force = False):
 	global config
@@ -43,6 +116,15 @@ def getCredentials(force = False):
 	return credentials
 
 import db
+
+def getPackageVersion(package):
+	response = os.popen('apt -qq list %s 2>/dev/null' % package).read()
+	lines = response.split("\n")
+	for line in lines:
+		if line.find(package) == 0 and line.find('installed') != -1:
+			match = re.search(r"^[\S]+\s([\S]+)", line)
+			return str(match[1])
+	return False
 
 def isPackageInstalled(package):
 	response = os.popen('apt -qq list %s 2>/dev/null' % package).read()
@@ -154,6 +236,7 @@ def checkUserDB():
 	database_creation = "CREATE DATABASE IF NOT EXISTS %s CHARACTER SET %s COLLATE %s" % (getConfig()['db_name'], getConfig()['db_character_set'], getConfig()['db_collation'])
 	user_grant = "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%s'" % (getConfig()['db_name'], getCredentials()['mysql']['username'], getConfig()['db_host'])
 	flush = "FLUSH PRIVILEGES"
+	# TODO: remove credential hardcoding
 	'''
 	print("\nUser '%s' or database '%s' does not exist or have sufficient access" % (getCredentials()['mysql']['username'], getConfig()['db_name']))
 	print("Input root password to check and add user and/or database to %s or Ctrl-C to exit and do it manually" % (getConfig()['db_service']))

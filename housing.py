@@ -11,37 +11,54 @@ class Cost:
 	TYPE_FINANCING = 3
 	TYPE_WATER = 4
 	TYPE_ELECTRICITY = 5
+	TYPE_DEPOSIT = 6
 
 	PERIOD_UNDEFINED = 0
-	PERIOD_MONTH = 1
-	PERIOD_YEAR = 2
-	PERIOD_NON_REOCCURRING = 3
-	PERIOD_OTHER = 4
+	PERIOD_DAILY = 1
+	PERIOD_WEEKLY = 2
+	PERIOD_MONTHLY = 3
+	PERIOD_YEARLY = 4
+	PERIOD_NON_REOCCURRING = 5
 
-	def __init__(self, type = TYPE_UNDEFINED, description = "", amount_monthly_EUR = 0.0, period = PERIOD_MONTH, period_multiplier = None, multiply_per_resident = False):
+	NO_FLAGS = b'00000000'
+	FLAG_MULTIPLY_PER_RESIDENT = b'00000001'
+
+	def __init__(self, type = TYPE_UNDEFINED, description = "", amount_EUR = 0.0, period = PERIOD_MONTHLY, period_multiplier = 1.0, flags = NO_FLAGS):
+		self.id = None
 		self.type = type
 		self.description = description
-		self.amount_monthly_EUR = amount_monthly_EUR
+		self.amount_EUR = amount_EUR
 		self.period = period
 		self.period_multiplier = period_multiplier
-		self.multiply_per_resident = multiply_per_resident
+		self.flags = flags
 
 		self.sanitize()
 
 	def sanitize(self):
-		if not self.type in [TYPE_UNDEFINED, TYPE_LAND_RENT, TYPE_MAINTENANCE, TYPE_FINANCING]:
-			self.type = TYPE_UNDEFINED
+		if not self.type in [self.TYPE_UNDEFINED, self.TYPE_LAND_RENT, self.TYPE_MAINTENANCE, self.TYPE_FINANCING]:
+			self.type = self.TYPE_UNDEFINED
 
 		if type(self.description) != str:
 			self.description = "";
 
-		self.amount_monthly_EUR = abs(self.amount_monthly_EUR)
+		self.amount_EUR = abs(self.amount_EUR)
+		if type(self.amount_EUR) is not float:
+			self.amount_EUR = float(self.amount_EUR)
 
-		if not self.period in [PERIOD_UNDEFINED, PERIOD_MONTH, PERIOD_YEAR, PERIOD_OTHER]:
-			self.period = PERIOD_UNDEFINED
+		if not self.period in [self.PERIOD_UNDEFINED, self.PERIOD_DAILY, self.PERIOD_WEEKLY, self.PERIOD_MONTHLY, self.PERIOD_YEARLY, self.PERIOD_NON_REOCCURRING]:
+			self.period = self.PERIOD_UNDEFINED
 
-		if self.period != PERIOD_OTHER and self.period_multiplier != None:
-			self.period_multiplier = None
+		if type(self.period_multiplier) is not float:
+			self.period_multiplier = float(self.period_multiplier)
+
+	def setAmount(amount_EUR):
+		self.amount_EUR = amount_EUR
+
+	def setPeriod(period):
+		self.period = period
+
+	def addFlags(flags):
+		self.flags = self.flags | flags
 
 class Listing:
 	TYPE_OWN_UNDEFINED = 0
@@ -128,7 +145,10 @@ class Listing:
 			if type(value) == str and len(value) == 0:
 				setattr(self, attr, None)
 
-	def addCost(self, new_cost: Cost, check_duplicates = True):
+		for idx, cost in enumerate(self.costs):
+			self.costs[idx].sanitize()
+
+	def addCost(self, new_cost, check_duplicates = True):
 		if check_duplicates:
 			for cost in self.costs:
 				if cost == new_cost:
@@ -162,10 +182,34 @@ class Listing:
 				update_sql += " WHERE id = %s LIMIT 1"
 				update_values.append(self.id)
 				update_value_tuple = tuple(update_values)
-				print(update_sql % update_value_tuple)
 				cursor.execute(update_sql, update_value_tuple)
+
+				cursor.execute("SHOW COLUMNS FROM costs")
+				table_columns = []
+				# TODO: prevent duplicate costs when save() if called multiple times
+				for column in cursor:
+					if (column["Field"] != "id" and column["Field"] != "date_updated"):
+						table_columns.append(column["Field"])
+				for cost in self.costs:
+					cost.listing_id = self.id
+					insert_sql = "INSERT INTO costs "
+					insert_columns = []
+					insert_placeholders = []
+					insert_values = []
+
+					for column in table_columns:
+						value = getattr(cost, column)
+						if value is not None:
+							if type(value) is bytes:
+								value = int(value,2)
+							insert_columns.append("`"+column+"`")
+							insert_placeholders.append("%s")
+							insert_values.append(value)
+					insert_sql += "("+", ".join(insert_columns)+") VALUES "
+					insert_sql += "("+", ".join(insert_placeholders)+")"
+					insert_values = tuple(insert_values)
+					cursor.execute(insert_sql, insert_values)
 		else:
-			# todo: fix this shit
 			with DBCon.get().cursor() as cursor:
 				cursor.execute("SELECT id FROM listings WHERE url = %s", self.url)
 				url_listing = cursor.fetchone()

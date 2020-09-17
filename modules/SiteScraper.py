@@ -29,5 +29,5 @@ class SiteScraper:
 
     # Method to try to find and remove blocking popups and ads (ElementClickInterfenrenceException)
     @classmethod
-    def removeBlocker(cls, driver, target):
+    def checkAndRemoveBlocker(cls, driver, target):
         pass

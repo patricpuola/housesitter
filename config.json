@@ -1,4 +1,6 @@
 {
+   "user": "nobody",
+   "group": "nogroup",
    "initial_setup_performed": true,
    "opencage_enabled": true,
    "db_host": "localhost",

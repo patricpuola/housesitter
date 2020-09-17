@@ -173,6 +173,9 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 			floor_max = None
 
 		listings[ad_index].fill(housing_type = housing_type, street_address = street_address, zip = zip, city = city, price = price, layout = layout, availability = availability, floor = floor, floor_max = floor_max, condition = condition, living_space_m2 = living_space_m2, total_space_m2 = total_space_m2, build_year = build_year, description = description, agency = agency)
+		listing_costs = getCosts(deep_driver)
+		for new_cost in listing_costs:
+			listings[ad_index].addCost(new_cost)
 		listings[ad_index].save()
 
 		# Fetch images
@@ -190,6 +193,34 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 	sys.exit('done for now')
 	return (original_listings < len(listings))
 
+def getCosts(deep_driver):
+	costs = []
+	try:
+		water_cost_text = deep_driver.find_element_by_xpath(getXpath("deep_cost_water")).text
+		water_cost = Cost(type = Cost.TYPE_WATER, description = 'Vesimaksu', amount_EUR = 0.0, period = Cost.PERIOD_UNDEFINED)
+		# TODO: fix this shit
+		water_cost.amount, water_cost.period, water_cost.flags = parseCostOccurrence(water_cost_text)
+		costs.append(water_cost)
+	except NoSuchElementException:
+		pass
+	return costs
+
+def parseCostOccurrence(text):
+	period = None
+	flags = Cost.NO_FLAGS
+	amount = 0.0
+	text_parts = re.split(r'\s+', text);
+	for part in text_parts:
+		sub_text = re.split(r'\\', part)
+		for subpart in sub_text:
+			if re.match(r'^kk$', subpart, flags=re.IGNORECASE):
+				period = Cost.PERIOD_MONTHLY
+			if re.match(r'^hlö$', subpart, flags=re.IGNORECASE):
+				flags = flags | Cost.FLAG_MULTIPLY_PER_RESIDENT
+			if re.match(r'\d+[\.,]\d+', subpart):
+				amount = re.sub(r'[\D\.,]', '', subpart)
+				amount = re.sub(r',', '.', amount)
+	return (amount, period, flags)
 
 def getXpath(item):
 	items = {
@@ -213,7 +244,9 @@ def getXpath(item):
 		"deep_layout" : """//th[contains(text(), 'Kuvaus:')]/following::td""",
 		"deep_availability" : """//th[contains(text(), 'Vapautuminen:')]/following::td""",
 		"deep_living_space_m2" : """//th[contains(text(), 'Asuinpinta-ala:')]/following::td""",
-		"deep_image_gallery_link" : """//strong[contains(text(), 'Katso kaikki kuvat')]/parent::a"""
+		"deep_image_gallery_link" : """//strong[contains(text(), 'Katso kaikki kuvat')]/parent::a""",
+		"deep_cost_water": """//th[contains(text(), 'Vesimaksu:')]/following::td""",
+		"deep_cost_deposit": """//th[contains(text(), 'Vakuus:')]/following::td"""
 	}
 
 	return items[item]
