@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Housesitter {% block title %}{% endblock %}</title>
+        <link rel="stylesheet" href="/static/main.css">
+        {% block head %}
+        {% endblock %}
+    </head>
+    <body>
+        <div id="main_container">
+            <div id="title">Housesitter</div>
+            <div id="nav">
+                {% for link in nav %}
+                    {% if request.path == link.href %}
+                        <span>{{ link.text }}</span>
+                    {% else %}
+                        <a href="{{ link.href }}">{{ link.text }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div id="content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </body>
+</html>

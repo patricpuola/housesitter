@@ -5,10 +5,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
+from Scrap import Scrap
 import sys, os, time, re
 import setup
 from pprint import pprint
 from housing import Cost, Listing
+from pprint import pprint
 
 def getListings(driver, deep_driver):
 	driver.get("https://vuokraovi.com")
@@ -18,52 +20,41 @@ def getListings(driver, deep_driver):
 
 	listings = []
 
-	try:
-		search_box_present = expected_conditions.presence_of_element_located((By.XPATH, getXpath("search_box")))
-		search_button_present = expected_conditions.presence_of_element_located((By.XPATH, getXpath("search_button")))
-		WebDriverWait(driver, timeout).until(search_box_present, search_button_present)
-	except TimeoutException:
+	if not Scrap.waitFor(driver, [(By.XPATH, getXpath("search_box")), (By.XPATH, getXpath("search_button"))], timeout):
 		print("Vuokraovi.com timed out")
-	finally:
-		print("Vuokraovi.com frontpage loaded")
+	print("Vuokraovi.com frontpage loaded")
 
-	driver.find_element_by_xpath(getXpath("location_deny")).send_keys(Keys.SPACE)
-	driver.find_element_by_xpath(getXpath("cookie")).send_keys(Keys.SPACE)
+	driver.find_element(By.XPATH, getXpath("location_deny")).send_keys(Keys.SPACE)
 
-	deep_driver.find_element_by_xpath(getXpath("location_deny")).send_keys(Keys.SPACE)
-	deep_driver.find_element_by_xpath(getXpath("cookie")).send_keys(Keys.SPACE)
+	deep_driver.find_element(By.XPATH, getXpath("location_deny")).send_keys(Keys.SPACE)
 
-	search_box = driver.find_element_by_xpath(getXpath("search_box"))
-	search_button = driver.find_element_by_xpath(getXpath("search_button"))
+	Scrap.checkAndRemoveBlocker(driver, 'Käytämme evästeitä', 'Hyväksy')
+	Scrap.checkAndRemoveBlocker(deep_driver, 'Käytämme evästeitä', 'Hyväksy')
+
+	search_box = driver.find_element(By.XPATH, getXpath("search_box"))
+	search_button = driver.find_element(By.XPATH, getXpath("search_button"))
 
 	search_box.send_keys("Helsinki")
 
-	try:
-		autofill_filled = expected_conditions.presence_of_element_located((By.CSS_SELECTOR, "ul.ui-autocomplete > li"))
-		WebDriverWait(driver, timeout).until(autofill_filled)
-	except TimeoutException:
+	if not Scrap.waitFor(driver, (By.CSS_SELECTOR, "ul.ui-autocomplete > li"), timeout):
 		print("List item timeout")
-	finally:
-		search_box.send_keys(Keys.ENTER)
+	search_box.send_keys(Keys.ENTER)
 
 	search_button.click()
 
 	page_nr = 0
 	while (scrapeResultPage(driver, deep_driver, page_nr, listings)):
-		driver.find_element_by_xpath(getXpath("next_result_page")).click()
+		driver.find_element(By.XPATH, getXpath("next_result_page")).click()
 		page_nr += 1
 
 def scrapeResultPage(driver, deep_driver, page_nr, listings):
+	timeout = 5
 	original_listings = len(listings)
 
-	timeout = 5
-	try:
-		results_displayed = expected_conditions.presence_of_element_located((By.CLASS_NAME, "list-item-container"))
-		WebDriverWait(driver, timeout).until(results_displayed)
-	except:
+	if not Scrap.waitFor(driver, (By.CLASS_NAME, "list-item-container"), timeout):
 		print("Result display timeout")
-	finally:
-		ads = driver.find_elements_by_class_name("list-item-container")
+
+	ads = driver.find_elements_by_class_name("list-item-container")
 
 	deepScrape = {}
 
@@ -71,7 +62,7 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 		ad_index = len(listings)
 
 		url = ad.find_elements_by_class_name("list-item-link")[0].get_attribute("href")
-		url = re.sub('\?.*$', '', url)
+		url = re.sub(r'\?.*$', '', url)
 
 		listing = Listing('vuokraovi.com', url)
 
@@ -89,77 +80,42 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 	for ad_index in deepScrape:
 		url = deepScrape[ad_index]
 		deep_driver.get(url)
-		try:
-			accordion_displayed = expected_conditions.presence_of_element_located((By.XPATH, getXpath("deep_accordion")))
-			WebDriverWait(deep_driver, timeout).until(accordion_displayed)
-		except:
+		if not Scrap.waitFor(deep_driver, (By.XPATH, getXpath("deep_accordion")), timeout):
 			print("Deep result accordion display timeout")
-		finally:
-			pass
 
 		try:
-			description = deep_driver.find_element_by_xpath(getXpath("deep_description")).text
+			description = deep_driver.find_element(By.XPATH, getXpath("deep_description")).text
 		except NoSuchElementException:
 			description = None
 
 		try:
-			street_address = deep_driver.find_element_by_xpath(getXpath("deep_street_address")).text
+			street_address = deep_driver.find_element(By.XPATH, getXpath("deep_street_address")).text
 		except NoSuchElementException:
 			street_address = None
 
 		try:
-			zip, city = deep_driver.find_element_by_xpath(getXpath("deep_zip_and_city")).text.split(" ", 1)
+			zip, city = deep_driver.find_element(By.XPATH, getXpath("deep_zip_and_city")).text.split(" ", 1)
 		except NoSuchElementException:
 			zip = None
 			city = None
 
-		try:
-			condition = deep_driver.find_element_by_xpath(getXpath("deep_condition")).text
-		except NoSuchElementException:
-			condition = None
+		condition = Scrap.getTableCellByHeader(deep_driver, 'Yleiskunto:')
+		build_year = Scrap.getTableCellByHeader(deep_driver, 'Rakennusvuosi:')
+		total_space_m2 = Scrap.getTableCellByHeader(deep_driver, 'Kokonaispinta-ala:')
 
 		try:
-			build_year = deep_driver.find_element_by_xpath(getXpath("deep_build_year")).text
-		except NoSuchElementException:
-			build_year = None
-
-		try:
-			total_space_m2 = deep_driver.find_element_by_xpath(getXpath("deep_total_space_m2")).text
-		except NoSuchElementException:
-			total_space_m2 = None
-
-		try:
-			agency = deep_driver.find_element_by_xpath(getXpath("deep_agency")).text
+			agency = deep_driver.find_element(By.XPATH, getXpath("deep_agency")).text
 		except NoSuchElementException:
 			agency = None
 
-		try:
-			housing_type = deep_driver.find_element_by_xpath(getXpath("deep_housing_type")).text
-		except NoSuchElementException:
-			housing_type = None
-
-		try:
-			price = deep_driver.find_element_by_xpath(getXpath("deep_price")).text
-		except NoSuchElementException:
-			price = None
-
-		try:
-			layout = deep_driver.find_element_by_xpath(getXpath("deep_layout")).text
-		except NoSuchElementException:
-			layout = None
-
-		try:
-			availability = deep_driver.find_element_by_xpath(getXpath("deep_availability")).text
-		except NoSuchElementException:
-			availability = None
-
-		try:
-			living_space_m2 = deep_driver.find_element_by_xpath(getXpath("deep_living_space_m2")).text
-		except NoSuchElementException:
-			living_space_m2 = None
-
-		try:
-			floor_and_max_floor_str = deep_driver.find_element_by_xpath(getXpath("deep_floor_and_max_floor")).text
+		housing_type = Scrap.getTableCellByHeader(deep_driver, 'Tyyppi:')
+		price = Scrap.getTableCellByHeader(deep_driver, 'Vuokra:')
+		layout = Scrap.getTableCellByHeader(deep_driver, 'Kuvaus:')
+		availability = Scrap.getTableCellByHeader(deep_driver, 'Vapautuminen:')
+		living_space_m2 = Scrap.getTableCellByHeader(deep_driver, 'Asuinpinta-ala:')
+		floor_and_max_floor_str = Scrap.getTableCellByHeader(deep_driver, 'Kerros:')
+		
+		if floor_and_max_floor_str is not None:
 			floor_and_max_floor = floor_and_max_floor_str.split("/", 1)
 
 			if len(floor_and_max_floor) == 2:
@@ -168,9 +124,6 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 			elif len(floor_and_max_floor) == 1:
 				floor = floor_and_max_floor[0].strip()
 				floor_max = None
-		except NoSuchElementException:
-			floor = None
-			floor_max = None
 
 		listings[ad_index].fill(housing_type = housing_type, street_address = street_address, zip = zip, city = city, price = price, layout = layout, availability = availability, floor = floor, floor_max = floor_max, condition = condition, living_space_m2 = living_space_m2, total_space_m2 = total_space_m2, build_year = build_year, description = description, agency = agency)
 		listing_costs = getCosts(deep_driver)
@@ -180,7 +133,7 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 
 		# Fetch images
 		try:
-			image_gallery_link = deep_driver.find_element_by_xpath(getXpath("deep_image_gallery_link")).get_attribute('href')
+			image_gallery_link = deep_driver.find_element(By.XPATH, getXpath("deep_image_gallery_link")).get_attribute('href')
 			deep_driver.get(image_gallery_link)
 			image_elements = deep_driver.find_elements_by_css_selector(".show-images__images > a")
 			for image in image_elements:
@@ -195,32 +148,46 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 
 def getCosts(deep_driver):
 	costs = []
-	try:
-		water_cost_text = deep_driver.find_element_by_xpath(getXpath("deep_cost_water")).text
+	# TODO: Empty strings getting through?
+	water_cost_text = Scrap.getTableCellByHeader(deep_driver, 'Vesimaksu:')
+	if water_cost_text is not None:
 		water_cost = Cost(type = Cost.TYPE_WATER, description = 'Vesimaksu', amount_EUR = 0.0, period = Cost.PERIOD_UNDEFINED)
-		# TODO: fix this shit
-		water_cost.amount, water_cost.period, water_cost.flags = parseCostOccurrence(water_cost_text)
+		parseCostOccurrence(water_cost, water_cost_text)
 		costs.append(water_cost)
-	except NoSuchElementException:
-		pass
+	
+	# TODO: Empty strings getting through?
+	deposit_text = Scrap.getTableCellByHeader(deep_driver, 'Vakuus:')
+	if deposit_text is not None:
+		deposit = Cost(type = Cost.TYPE_DEPOSIT, description = 'Vuokravakuus', amount_EUR = 0.0, period = Cost.PERIOD_NON_REOCCURRING)
+		parseCostOccurrence(deposit, deposit_text) # period ignored
+		costs.append(deposit)
+	
+	# TODO: parse a full list and add parsing for other running cost types, but also fix this shit
 	return costs
 
-def parseCostOccurrence(text):
-	period = None
-	flags = Cost.NO_FLAGS
-	amount = 0.0
-	text_parts = re.split(r'\s+', text);
+def parseCostOccurrence(cost: Cost, text):
+	period, flags, amount = None, Cost.NO_FLAGS, None
+	text_parts = re.split(r'\s+', text)
 	for part in text_parts:
-		sub_text = re.split(r'\\', part)
+		sub_text = re.split(r'/', part)
 		for subpart in sub_text:
-			if re.match(r'^kk$', subpart, flags=re.IGNORECASE):
+			subpart = subpart.strip()
+			if re.match(r'kk', subpart, flags=re.IGNORECASE):
 				period = Cost.PERIOD_MONTHLY
-			if re.match(r'^hlö$', subpart, flags=re.IGNORECASE):
+			if re.match(r'hlö', subpart, flags=re.IGNORECASE):
 				flags = flags | Cost.FLAG_MULTIPLY_PER_RESIDENT
-			if re.match(r'\d+[\.,]\d+', subpart):
-				amount = re.sub(r'[\D\.,]', '', subpart)
-				amount = re.sub(r',', '.', amount)
-	return (amount, period, flags)
+			if re.match(r'\d+[\.,]?\d*', subpart):
+				amount = re.sub(r'[^\d\.,]', '', subpart)
+				amount = float(re.sub(r',', '.', amount))
+
+	if amount is not None:
+		cost.setAmount(amount)
+		if period is not None:
+			cost.setPeriod(period)
+		if flags != Cost.NO_FLAGS:
+			cost.addFlags(flags)
+		return True
+	return False
 
 def getXpath(item):
 	items = {
@@ -234,19 +201,9 @@ def getXpath(item):
 		"deep_street_address": """//*[@id="collapseOne"]/div/table/tbody/tr[1]/td/span[1]""",
 		"deep_zip_and_city": """//*[@id="collapseOne"]/div/table/tbody/tr[1]/td/span[2]""",
 		"deep_floor_and_max_floor": """//th[contains(text(), 'Kerros:')]/following::td""",
-		"deep_condition": """//th[contains(text(), 'Yleiskunto:')]/following::td""",
-		"deep_build_year": """//th[contains(text(), 'Rakennusvuosi:')]/following::td""",
-		"deep_total_space_m2": """//th[contains(text(), 'Kokonaispinta-ala:')]/following::td""",
 		"deep_description": """//*[@id="itempageDescription"]""",
 		"deep_agency": """//*[@id="rentalContactInfo"]/p/b/a""",
-		"deep_housing_type" : """//th[contains(text(), 'Tyyppi:')]/following::td""",
-		"deep_price" : """//th[contains(text(), 'Vuokra:')]/following::td""",
-		"deep_layout" : """//th[contains(text(), 'Kuvaus:')]/following::td""",
-		"deep_availability" : """//th[contains(text(), 'Vapautuminen:')]/following::td""",
-		"deep_living_space_m2" : """//th[contains(text(), 'Asuinpinta-ala:')]/following::td""",
 		"deep_image_gallery_link" : """//strong[contains(text(), 'Katso kaikki kuvat')]/parent::a""",
-		"deep_cost_water": """//th[contains(text(), 'Vesimaksu:')]/following::td""",
-		"deep_cost_deposit": """//th[contains(text(), 'Vakuus:')]/following::td"""
 	}
 
 	return items[item]

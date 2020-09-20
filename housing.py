@@ -12,6 +12,7 @@ class Cost:
 	TYPE_WATER = 4
 	TYPE_ELECTRICITY = 5
 	TYPE_DEPOSIT = 6
+	valid_types = [TYPE_UNDEFINED, TYPE_LAND_RENT, TYPE_MAINTENANCE, TYPE_FINANCING, TYPE_WATER, TYPE_ELECTRICITY, TYPE_DEPOSIT]
 
 	PERIOD_UNDEFINED = 0
 	PERIOD_DAILY = 1
@@ -19,9 +20,11 @@ class Cost:
 	PERIOD_MONTHLY = 3
 	PERIOD_YEARLY = 4
 	PERIOD_NON_REOCCURRING = 5
+	valid_periods = [PERIOD_UNDEFINED, PERIOD_DAILY, PERIOD_WEEKLY, PERIOD_MONTHLY, PERIOD_YEARLY, PERIOD_NON_REOCCURRING]
 
-	NO_FLAGS = b'00000000'
-	FLAG_MULTIPLY_PER_RESIDENT = b'00000001'
+	NO_FLAGS = int('00000000', 2)
+	FLAG_MULTIPLY_PER_RESIDENT = int('00000001', 2)
+	ALL_FLAGS = int('11111111', 2)
 
 	def __init__(self, type = TYPE_UNDEFINED, description = "", amount_EUR = 0.0, period = PERIOD_MONTHLY, period_multiplier = 1.0, flags = NO_FLAGS):
 		self.id = None
@@ -35,30 +38,33 @@ class Cost:
 		self.sanitize()
 
 	def sanitize(self):
-		if not self.type in [self.TYPE_UNDEFINED, self.TYPE_LAND_RENT, self.TYPE_MAINTENANCE, self.TYPE_FINANCING]:
+		if not self.type in self.valid_types:
 			self.type = self.TYPE_UNDEFINED
 
 		if type(self.description) != str:
-			self.description = "";
+			self.description = ""
 
 		self.amount_EUR = abs(self.amount_EUR)
 		if type(self.amount_EUR) is not float:
 			self.amount_EUR = float(self.amount_EUR)
 
-		if not self.period in [self.PERIOD_UNDEFINED, self.PERIOD_DAILY, self.PERIOD_WEEKLY, self.PERIOD_MONTHLY, self.PERIOD_YEARLY, self.PERIOD_NON_REOCCURRING]:
+		if not self.period in self.valid_periods:
 			self.period = self.PERIOD_UNDEFINED
 
 		if type(self.period_multiplier) is not float:
 			self.period_multiplier = float(self.period_multiplier)
 
-	def setAmount(amount_EUR):
-		self.amount_EUR = amount_EUR
+	def setAmount(self, amount_EUR):
+		if type(amount_EUR) is float:
+			self.amount_EUR = amount_EUR
 
-	def setPeriod(period):
-		self.period = period
+	def setPeriod(self, period):
+		if period in self.valid_periods:
+			self.period = period
 
-	def addFlags(flags):
-		self.flags = self.flags | flags
+	def addFlags(self, flags):
+		if flags <= self.ALL_FLAGS and flags > 0:
+			self.flags = self.flags | flags
 
 class Listing:
 	TYPE_OWN_UNDEFINED = 0
@@ -221,6 +227,9 @@ class Listing:
 		return True
 
 	def addImage(self, image_url):
+		head_check = requests.head(image_url)
+		if not head_check.ok or not re.match('image', head_check.headers['Content-Type']):
+			return False
 		extension = pathlib.Path(image_url).suffix
 		mime_types = mimetypes.guess_type(image_url)
 		mime_type = str(mime_types[0])

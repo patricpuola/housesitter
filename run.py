@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import sys, os, time, math
+from pathlib import Path
 sys.path.insert(1, r'modules')
 flags = sys.argv
 
@@ -9,8 +10,9 @@ os.popen('pkill chrome')
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import WebDriverException
 
-from SiteScraper import SiteScraper
+from Scrap import Scrap
 import vuokraovi_com
 import setup
 from setup import getConfig as conf
@@ -38,6 +40,10 @@ if "geocode" in flags:
 		print("Geocoding is currently disabled")
 	sys.exit()
 
+if "empty" in flags:
+	setup.emptyTables()
+	sys.exit()
+
 # Chrome init
 BROWSER = 'chrome'
 
@@ -50,9 +56,11 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 main_driver = webdriver.Chrome(chrome_path, options=chrome_options)
 deep_driver = webdriver.Chrome(chrome_path, options=chrome_options)
 
-# Window positioning and resizing
-main_driver.set_window_position(0,0)
-deep_driver.set_window_position(0,0)
+# Window positioning and initial resize to avoid maximized window problems
+main_driver.set_window_rect(height = 480, width = 640, x = 0, y = 0)
+deep_driver.set_window_rect(height = 480, width = 640, x = 0, y = 0)
+
+time.sleep(2)
 
 main_driver.maximize_window()
 window_width = main_driver.get_window_size()['width']

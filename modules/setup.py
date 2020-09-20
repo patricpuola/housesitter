@@ -2,6 +2,7 @@
 import sys, os, re, importlib, json, pprint, pymysql, requests, wget, pwd, grp, stat
 from bs4 import BeautifulSoup
 from zipfile import ZipFile
+from pathlib import Path
 
 required_packages = ['mariadb-server', 'wget']
 optional_packages = []
@@ -9,11 +10,15 @@ optional_packages = []
 required_modules = ['selenium', 'pymysql', 'beautifulsoup4']
 optional_modules = ['opencage']
 
+ROOT = Path(__file__).resolve().parent.parent
+CONFIG_FILE = ROOT / 'config.json'
+CREDENTIALS_FILE = ROOT / 'credentials.json.secure'
+
 config = None
 credentials = None
 
 TMP_DIR = "/tmp/"
-WEBDRIVER_DIR = r"webdrivers/"
+WEBDRIVER_DIR = ROOT / 'webdrivers'
 webdrivers = {
 	'chrome': {
 		'url': 'https://chromedriver.chromium.org/',
@@ -47,7 +52,7 @@ def getWebDriverPath(browser):
 			package_version = getPackageVersion(webdrivers[browser]['package'])
 			main_version = parseWebDriverMainVersion(package_version)
 			webdriver_file = "chromedriver." + main_version
-			if not os.path.exists(WEBDRIVER_DIR + webdriver_file):
+			if not os.path.exists(WEBDRIVER_DIR / webdriver_file):
 				main_page_html = requests.get(webdrivers[browser]['url'] + 'downloads').text
 				soup = BeautifulSoup(main_page_html, 'html.parser')
 				for link in soup.find_all('a', href=True, text=re.compile(r'ChromeDriver ' + main_version)):
@@ -55,7 +60,7 @@ def getWebDriverPath(browser):
 					download_url = webdrivers[browser]['download_url'] + full_version + '/chromedriver_linux64.zip'
 					break
 			else:
-				return WEBDRIVER_DIR + webdriver_file
+				return WEBDRIVER_DIR / webdriver_file
 	elif browser == 'firefox':
 		# TODO
 		pass
@@ -70,15 +75,16 @@ def getWebDriverPath(browser):
 	with ZipFile(tmp_zip, 'r') as zipObject:
 		for filename in zipObject.namelist():
 			if (filename.endswith('driver')):
-				with open(WEBDRIVER_DIR + webdriver_file, "wb") as webdriver_handle:
+				with open(WEBDRIVER_DIR / webdriver_file, "wb") as webdriver_handle:
 					webdriver_handle.write(zipObject.read(filename))
-				fixFileOwnerAndMode(WEBDRIVER_DIR + webdriver_file)
+				fixFileOwnerAndMode(WEBDRIVER_DIR / webdriver_file)
 
+	new_webdriver_fullpath = WEBDRIVER_DIR / webdriver_file
 	
-	if not os.path.exists(WEBDRIVER_DIR + webdriver_file):
+	if not new_webdriver_fullpath:
 		print("Something is wrong with downloaded zip file, driver file not found in {}".format(tmp_zip))
 	else:
-		return r"" + WEBDRIVER_DIR + webdriver_file
+		return new_webdriver_fullpath
 
 def parseWebDriverMainVersion(version_str):
 	return str(re.search(r"^[\d]+", version_str.strip())[0])
@@ -88,7 +94,7 @@ def getConfig(force = False):
 	if config != None and not force:
 		return config
 
-	with open(r"config.json", 'r') as config_file:
+	with open(CONFIG_FILE, 'r') as config_file:
 		config_json = config_file.read()
 		config = json.loads(config_json)
 
@@ -96,7 +102,7 @@ def getConfig(force = False):
 
 def saveConfig():
 	global config
-	with open(r"config.json", 'w') as config_file:
+	with open(CONFIG_FILE, 'w') as config_file:
 		json.dump(config, config_file, indent=3)
 
 def getCredentials(force = False):
@@ -104,12 +110,12 @@ def getCredentials(force = False):
 	if credentials != None and not force:
 		return credentials
 
-	if not os.path.exists(r"credentials.json.secure"):
+	if not CREDENTIALS_FILE.exists():
 		print("""ERROR: Cannot find "credentials.json.secure" """)
 		print("""Use credentials.json.secure.template to fill-in and rename""")
 		sys.exit()
 
-	with open(r"credentials.json.secure", 'r') as conf_file:
+	with open(CREDENTIALS_FILE, 'r') as conf_file:
 		conf_json = conf_file.read()
 		credentials = json.loads(conf_json)
 
@@ -145,15 +151,16 @@ def init():
 	print("\n[ HOUSESITTER INITIAL SETUP ]")
 
 	if config['initial_setup_performed']:
-		if input("This system has already been initialized, redo? [Y/N]:").lower() != 'y':
+		if input("This system has already been initialized, redo? [Y/N]: ").lower() != 'y':
 			print("[ DONE ]\n")
 			sys.exit()
 		else:
 			print("Redoing initial setup")
 
 	depedencyCheck()
-	screenshot_directory = r""+getConfig()['screenshot_directory']
-	if os.path.exists(screenshot_directory) == False:
+	screenshot_directory = ROOT / getConfig()['screenshot_directory']
+	if not screenshot_directory.exists():
+		# TODO check 2 lines below
 		os.makedirs(screenshot_directory)
 		os.chmod(screenshot_directory, 0o777)
 		print("Screenshot folder created")
@@ -283,7 +290,8 @@ def checkUserDB():
 
 def createTables():
 	from db import DBCon
-	table_template_path = r"table_templates"
+	table_template_path = ROOT / "table_templates"
+	# TODO: check line below
 	table_templates = [f for f in os.listdir(table_template_path) if os.path.isfile(os.path.join(table_template_path, f))]
 
 
@@ -293,3 +301,18 @@ def createTables():
 				cursor.execute(template_file.read())
 
 	return True
+
+def emptyTables():
+	if input("Are you sure you want to TRUNCATE() all tables? [Y/N]: ").lower() != 'y':
+		print("[ DONE ]\n")
+		return
+	from db import DBCon
+	print("Emptying all tables...")
+	with DBCon.get(cursor_type=DBCon.CURSOR_TYPE_NORMAL).cursor() as cursor:
+		cursor.execute('SHOW TABLES')
+		tables = cursor.fetchall()
+		for table in tables:
+			table_name = table[0]
+			cursor.execute('TRUNCATE TABLE `{}`'.format(table_name))
+			print("`{}` OK".format(table_name))
+	print("[ DONE ]\n")
