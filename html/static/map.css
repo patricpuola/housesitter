@@ -2,3 +2,33 @@
     width: 100%;
     min-height: 50em;
 }
+
+.thumbnail_cont{
+    position: relative;
+}
+
+.thumbnail_cont .price{
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: 0.25em;
+    background-color: white;
+}
+
+.thumbnail_cont .size{
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    padding: 0.25em;
+    background-color: white;
+}
+
+.mapboxgl-popup {
+    max-width: 100%;
+    font: 1em/1em Ubuntu;
+}
+
+.mapboxgl-popup img{
+    max-width: 100%;
+    max-height: 100%;
+}

@@ -7,17 +7,91 @@
 <script type="text/javascript" src="/static/map.js"></script>
 {% endblock %}
 {% block content %}
-    <h2>Map</h2>
-    <div id="map">
-        {# MapBox Map #}
-    </div>
-    <script type="text/javascript">
-        mapboxgl.accessToken = '{{ access_token }}';
-        var map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v11', // stylesheet location
-            center: [{{ starting_point['lng'] }}, {{ starting_point['lat'] }}], // starting position [lng, lat]
-            zoom: 0 // starting zoom
+<h2>Map</h2>
+<div id="map">
+    {# MapBox Map #}
+</div>
+<script type="text/javascript">
+    mapboxgl.accessToken = '{{ access_token }}';
+    var map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v11', // stylesheet location
+        center: [{{ starting_point['lng'] }}, {{ starting_point['lat'] }}], // starting position [lng, lat]
+        zoom: {{ starting_point['zoom'] }}
+    });
+
+    map.on('load', function () {
+        // Create a popup, but don't add it to the map yet.
+        var popup = new mapboxgl.Popup({
+            closeButton: false,
+            closeOnClick: false
         });
-    </script>
+
+        map.loadImage(
+            '/asset/map_marker/25',
+            // Add an image to use as a custom marker
+            function (error, image) {
+                if (error) throw error;
+                map.addImage('custom-marker', image);
+
+                map.addSource('places', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'FeatureCollection',
+                        'features': [
+                            {% for listing in listings %}
+                                {
+                                    'type': 'Feature',
+                                    'properties': {
+                                        'description':
+                                            {% include "map_popup.html" %}
+                                    },
+                                    'geometry': {
+                                        'type': 'Point',
+                                        'coordinates': [{{ listing['lng'] }}, {{ listing['lat']}}]
+                                    }    
+                                }{% if loop.index != loop.length %},{% endif %}
+                            {% endfor %}
+                        ]
+                    }
+                });
+
+                // Add a layer showing the places.
+                map.addLayer({
+                    'id': 'places',
+                    'type': 'symbol',
+                    'source': 'places',
+                    'layout': {
+                        'icon-image': 'custom-marker',
+                        'icon-allow-overlap': true
+                    }
+                });
+            }
+        );
+
+        map.on('mouseenter', 'places', function (e) {
+            // Change the cursor style as a UI indicator.
+            map.getCanvas().style.cursor = 'pointer';
+
+            var coordinates = e.features[0].geometry.coordinates.slice();
+            var description = e.features[0].properties.description;
+
+            // Ensure that if the map is zoomed out such that multiple
+            // copies of the feature are visible, the popup appears
+            // over the copy being pointed to.
+            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+            }
+
+            // Populate the popup and set its coordinates
+            // based on the feature found.
+            popup.setLngLat(coordinates).setHTML(description).addTo(map);
+        });
+
+        map.on('mouseleave', 'places', function () {
+            map.getCanvas().style.cursor = '';
+            popup.remove();
+        });
+    });
+</script>
 {% endblock %}

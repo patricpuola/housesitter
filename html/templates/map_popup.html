@@ -1,0 +1,13 @@
+`
+<div class="thumbnail_cont">
+{% if listing['thumbnail_url'] %}
+    <img src="{{ listing['thumbnail_url'] }}">
+{% else %}
+    <img src="/static/no_images.svg">
+{% endif %}
+<div class="size">{{ listing.living_space_m2 }}m²</div>
+<div class="price">{{ '{:.2f}'.format(listing.price) }} &euro;/kk</div>
+</div>
+<div class="type">{{ listing.housing_type}}</div>
+<div class="layout">{{ listing.layout }}</div>
+`

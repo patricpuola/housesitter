@@ -14,6 +14,9 @@
                     {% for image in listing.images[0:] %}
                         <img class="image" data-show="false" id="image_{{ image['id'] }}" data-listing-id="{{ listing.id }}" src="{{ image['url'] }}">
                     {% endfor %}
+                    {% if not listing.images[0] %}
+                        <img class="image" data-show="true" src="/static/no_images.svg">
+                    {% endif %}
                     </div>
                     <div id="listing_selector_{{ listing.id }}" class="image_selector">
                         {% for image in listing.images %}<div class="image_select" data-image-id="{{ image['id'] }}" data-listing-id="{{ listing.id }}">&#9675;</div>{% endfor %}
