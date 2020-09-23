@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', function(){
+    const mouseenter = new MouseEvent('mouseenter', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+    });
     
     image_selects = document.getElementsByClassName('image_select');
     for (i = 0; i < image_selects.length; i++){
@@ -20,4 +25,15 @@ document.addEventListener('DOMContentLoaded', function(){
             this.innerHTML = "&#9679;";
         });
     }
+
+    // Trigger first image of each row
+    image_selectors = document.getElementsByClassName('image_selector');
+    for (i = 0; i < image_selectors.length; i++){
+        let first_selector = image_selectors[i].children[0];
+        if (typeof first_selector != 'undefined'){
+            first_selector.dispatchEvent(mouseenter);
+        }
+    }
+
+
 });

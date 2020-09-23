@@ -2,8 +2,7 @@
 from flask import Flask, render_template, Response
 import sys
 sys.path.insert(1, r'../modules')
-from setup import getConfig
-from setup import ROOT
+from setup import getConfig, ROOT, getCredentials
 from db import DBCon
 app = Flask(__name__)
 
@@ -36,10 +35,12 @@ def getImageIds(listing_id: int, limit = None):
 
 def getImageData(image_id: int):
     image_dir = getConfig()['screenshot_directory']
-    with DBCon.get().cursor() as cursor:
+    img_db = DBCon.get(persistent=False)
+    with img_db.cursor() as cursor:
         cursor.execute("SELECT uuid, extension, mime_type FROM images WHERE id = %d LIMIT 1" % image_id)
         image = cursor.fetchone()
         filename = image['uuid'] + image['extension']
+    img_db.close()
     return (ROOT / image_dir / filename, image['mime_type'])
 
 def getStats():
@@ -52,6 +53,32 @@ def getStats():
         cursor.execute("SELECT 'Geocodes' as `stat`, count(id) as `value` FROM geocodes")
         stats.append(cursor.fetchone())
     return stats
+
+def getZoom(lng_range, lat_range):
+    LNG_MAX = 80
+    LNG_MIN = -180
+    LAT_MAX = 90
+    LAT_MIN = -90
+    range_percentage_lng = lng_range / (abs(LNG_MIN)+LNG_MAX)
+    range_percentage_lat = lat_range / (abs(LAT_MIN)+LAT_MAX)
+    # visible_prct = 100% / 1 + zoom_unit
+    return 9
+
+
+
+def getMapStartingPoint():
+    starting_point = {'lng':None, 'lat':None, 'zoom': 9}
+    with DBCon.get().cursor() as cursor:
+        cursor.execute("SELECT MIN(lng) as lng_min, MAX(lng) as lng_max, MIN(lat) as lat_min, MAX(lat) as lat_max FROM geocodes")
+        map_values = cursor.fetchone()
+    if map_values:
+        starting_point['lng'] = (map_values['lng_min'] + map_values['lng_max']) / 2
+        starting_point['lat'] = (map_values['lat_min'] + map_values['lat_max']) / 2
+        lng_range = map_values['lng_max'] - map_values['lng_min']
+        lat_range = map_values['lat_max'] - map_values['lat_min']
+        starting_point['zoom'] = getZoom(lng_range, lat_range)
+        print(starting_point)
+    return starting_point
 
 @app.route('/')
 def index():
@@ -66,6 +93,7 @@ def listings(detail=None):
         for listing in listings:
             listing['images'] = []
             image_ids = getImageIds(listing['id'])
+            print(image_ids)
             for image_id in image_ids:
                 listing['images'].append({'url':'/image/'+str(image_id), 'id':image_id})
            
@@ -82,7 +110,8 @@ def image(id = None):
 
 @app.route('/map')
 def map():
-    return render_template('map.html', nav=getNavLinks())
+    access_token = getCredentials()['mapbox']['access_token']
+    return render_template('map.html', nav=getNavLinks(), access_token=access_token, starting_point=getMapStartingPoint())
 
 if __name__ == '__main__':
     app.debug = True

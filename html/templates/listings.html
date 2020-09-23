@@ -11,15 +11,12 @@
             <div class="listing_short">
                 <div class="thumbnail">
                     <div id="listing_images_{{ listing.id }}" class="images">
-                    {% for image in listing.images[0] %}
-                        <img class="image" data-show="{{ show }}" id="image_{{ image['id'] }}" data-listing-id="{{ listing.id }}" src="{{ image['url'] }}">
-                    {% endfor %}
-                    {% for image in listing.images[1:] %}
-                        <img class="image" data-show="{{ show }}" id="image_{{ image['id'] }}" data-listing-id="{{ listing.id }}" src="{{ image['url'] }}">
+                    {% for image in listing.images[0:] %}
+                        <img class="image" data-show="false" id="image_{{ image['id'] }}" data-listing-id="{{ listing.id }}" src="{{ image['url'] }}">
                     {% endfor %}
                     </div>
-                    <div id="listing_selector_{{ listing.id }}" class="image_selector>
-                        {% for image in listing.images %}<span class="image_select" data-image-id="{{ image['id'] }}" data-listing-id="{{ listing.id }}">&#9675;</span>{% endfor %}
+                    <div id="listing_selector_{{ listing.id }}" class="image_selector">
+                        {% for image in listing.images %}<div class="image_select" data-image-id="{{ image['id'] }}" data-listing-id="{{ listing.id }}">&#9675;</div>{% endfor %}
                     </div>
                 </div>
                 <div class="detail_1">

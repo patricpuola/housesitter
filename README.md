@@ -2,6 +2,8 @@ Software environment:
 - Ubuntu 19.10 (desktop) in a VM
 - Python3
 - Selenium
+- BeautifulSoup
+- Flask
 - chromedriver (matching to Chrome version)
 - Google Chrome
 - MySQL/MariaDB
@@ -9,6 +11,10 @@ Software environment:
 Optional:
 - opencage
 
-Run with "./run.py" or "python3 run.py"
+Scraper:
+"./run.py"
+
+WebUI:
+"./html/housesitter.py"
 
 ![](preview.gif)
