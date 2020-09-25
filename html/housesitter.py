@@ -8,9 +8,8 @@ from setup import getConfig, ROOT, getCredentials
 from db import DBCon
 app = Flask(__name__)
 
-sites = ['map', 'listings']
-
 def getNavLinks():
+    sites = ['map', 'listings']
     links = []
     links.append({'href':'/', 'text':'Stats'})
     for site in sites:
@@ -20,21 +19,28 @@ def getNavLinks():
 def getListings(count = 20, offset = 0, getCoordinates = False):
     listings = []
     with DBCon.get().cursor() as cursor:
-        cursor.execute("SELECT id, url, site, housing_type, description,  street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year FROM listings ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (count, offset))
+        cursor.execute("SELECT id, url, site, housing_type, description, street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year FROM listings ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (count, offset))
         with DBCon.get().cursor() as geo_cursor:
             while True:
                 listing = cursor.fetchone()
                 if listing == None:
                     break
+                if listing['layout'] is not None:
+                    listing['layout'] = listing['layout'].replace('+',' + ')
+                for prop in listing:
+                    if listing[prop] == None:
+                        listing[prop] = ""
                 listing["lng"] = None
                 listing["lat"] = None
                 if getCoordinates is True:
-                    full_address = listing["street_address"]+", "+str(listing["zip"])+" "+listing["city"]
-                    geo_cursor.execute("SELECT lat, lng FROM geocodes WHERE query = '{}' LIMIT 1".format(full_address))
-                    coords = geo_cursor.fetchone()
-                    if coords:
-                        listing["lng"] = coords['lng']
-                        listing["lat"] = coords['lat']
+                    if listing['street_address'] is not None and listing['zip'] is not None or listing['city'] is not None:
+                        full_address = listing["street_address"]+", "+str(listing["zip"])+" "+listing["city"]
+                        full_address = DBCon.get().escape_string(full_address)
+                        geo_cursor.execute("SELECT lat, lng FROM geocodes WHERE query = '{}' LIMIT 1".format(full_address))
+                        coords = geo_cursor.fetchone()
+                        if coords is not None:
+                            listing["lng"] = coords['lng']
+                            listing["lat"] = coords['lat']
                 listings.append(listing)
     return listings
 
@@ -101,8 +107,68 @@ def getMapStartingPoint():
         lng_range = map_values['lng_max'] - map_values['lng_min']
         lat_range = map_values['lat_max'] - map_values['lat_min']
         starting_point['zoom'] = getZoom(lng_range, lat_range)
-        print(starting_point)
     return starting_point
+
+def appendAnalysis(listings, dataset_analysis = {}):
+    price_per_m2_min = None
+    price_per_m2_max = None
+    price_max = None
+    price_min = None
+    for listing in listings:
+        listing['analysis'] = {}
+        if not isinstance(listing['price'], float):
+            continue
+        listing['analysis']['price_per_m2'] = listing['price'] / listing['living_space_m2']
+        if price_per_m2_min is None or listing['analysis']['price_per_m2'] < price_per_m2_min:
+            price_per_m2_min = listing['analysis']['price_per_m2']
+        if price_per_m2_max is None or listing['analysis']['price_per_m2'] > price_per_m2_max:
+            price_per_m2_max = listing['analysis']['price_per_m2']
+
+        if price_min is None or listing['price'] < price_min:
+            price_min = listing['price']
+        if price_max is None or listing['price'] > price_max:
+            price_max = listing['price']
+
+    dataset_analysis['price_per_m2_min'] = price_per_m2_min
+    dataset_analysis['price_per_m2_max'] = price_per_m2_max
+    dataset_analysis['price_min'] = price_min
+    dataset_analysis['price_max'] = price_max
+
+    price_per_m2_max_normalized = price_per_m2_max - price_per_m2_min
+    price_max_normalized = price_max - price_min
+    for listing in listings:
+        if 'price_per_m2' not in listing['analysis']:
+            continue
+        price_per_m2_normalized = listing['analysis']['price_per_m2'] - price_per_m2_min
+        listing['analysis']['price_per_m2_dataset_relational'] = price_per_m2_normalized / price_per_m2_max_normalized
+
+        price_normalized = listing['price'] - price_min
+        listing['analysis']['price_dataset_relational'] = price_normalized / price_max_normalized
+
+
+def getRGB(value):
+    if value is None or value > 100:
+        red = 255
+        green = 255
+        blue = 255
+    elif 0 <= value <= 25:
+        red = int(value / 25 * 255)
+        green = 255
+        blue = 0
+    elif 25 < value <= 50:
+        red = 255
+        green = 255 - int((value-25) / 25 * 255)
+        blue = 0
+    elif 50 < value <= 75:
+        red = 255
+        green = 0
+        blue = int((value-50) / 25 * 255)
+    else:
+        red = 255 - int((value-75) / 25 * 255)
+        green = 0
+        blue = 255
+    
+    return red,green,blue
 
 @app.route('/')
 def index():
@@ -133,22 +199,46 @@ def image(id = None):
 @app.route('/map')
 def map():
     access_token = getCredentials()['mapbox']['access_token']
-    listings = getListings(20, 0, True)
+    marker_variations = []
+    listings = getListings(200, 0, True)
+    dataset_analysis = {}
+    appendAnalysis(listings, dataset_analysis)
     for listing in listings:
         image_ids = getImageIds(listing['id'], 1)
         listing['thumbnail_url'] = None
         if len(image_ids) > 0:
             listing['thumbnail_url'] = '/image/'+str(image_ids[0])
-    return render_template('map.html', nav=getNavLinks(), access_token=access_token, starting_point=getMapStartingPoint(), listings=listings)
+        if 'price_per_m2_dataset_relational' in listing['analysis']:
+            listing['analysis']['marker_dot_intensity'] = int(round(listing['analysis']['price_per_m2_dataset_relational']*100,2))
+        else:
+            listing['analysis']['marker_dot_intensity'] = None
+        
+        if 'price_dataset_relational' in listing['analysis']:
+            listing['analysis']['marker_intensity'] = int(round(listing['analysis']['price_dataset_relational']*100,2))
+        else:
+            listing['analysis']['marker_intensity'] = None
+        
+        if listing['analysis']['marker_intensity'] is not None and listing['analysis']['marker_dot_intensity'] is not None:
+            marker_variation = (listing['analysis']['marker_intensity'],listing['analysis']['marker_dot_intensity'])
+            if marker_variation not in marker_variations:
+                marker_variations.append(marker_variation)
 
+    return render_template('map.html', nav=getNavLinks(), access_token=access_token, starting_point=getMapStartingPoint(), listings=listings, marker_variations=marker_variations, dataset_analysis=dataset_analysis)
+
+@app.route('/asset/map_marker/')
 @app.route('/asset/map_marker/<int:intensity>')
-def asset(intensity = 0):
-    red = 255 if intensity >= 50 else (intensity/50) * 255
-    green = 255 if intensity <= 50 else 255 - ((intensity-50)/50) * 255
+@app.route('/asset/map_marker/<int:intensity>/<int:dot_intensity>')
+def asset(intensity = None, dot_intensity = None):
+    if not 0 <= intensity <= 100:
+        intensity = None
+    if not 0 <= dot_intensity <= 100:
+        dot_intensity = None
+    color = getRGB(intensity)
+    dot_color = getRGB(dot_intensity)
     asset = ROOT / "html/static/marker.svg"
     with open(asset, 'r') as asset_file:
         asset_data = asset_file.read()
-    asset_data = asset_data.replace('{{ marker_color }}', 'rgb({},{},0)'.format(red,green)).replace('{{ dot_color }}', 'white')
+    asset_data = asset_data.replace('{{ marker_color }}', 'rgb({},{},{})'.format(*color)).replace('{{ dot_color }}', 'rgb({},{},{})'.format(*dot_color))
     png = BytesIO()
     svg2png(bytestring=asset_data, write_to=png)
     return Response(response=png.getvalue(), headers={'Content-type':'image/png'}, mimetype='image/png')

@@ -5,6 +5,8 @@
 
 .thumbnail_cont{
     position: relative;
+    max-height: 20em;
+    overflow: hidden;
 }
 
 .thumbnail_cont .price{
@@ -23,6 +25,15 @@
     background-color: white;
 }
 
+.thumbnail_cont .url{
+    position: absolute;
+    right: -0.5em;
+    top: -0.5em;
+    padding: 0.5em;
+    background-color: white;
+    color: dodgerblue;
+}
+
 .mapboxgl-popup {
     max-width: 100%;
     font: 1em/1em Ubuntu;
@@ -31,4 +42,69 @@
 .mapboxgl-popup img{
     max-width: 100%;
     max-height: 100%;
+}
+
+.popup_details{
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto auto;
+    line-height: 1.2em;
+    grid-column-gap: 1em;
+}
+
+.popup_details > div:nth-child(even){
+    text-align: right;    
+}
+
+#dataset_analysis{
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: "price_min price_title price_max" "scale scale scale" "price_per_m2_min price_per_m2_title price_per_m2_max";
+    margin-bottom: 0.5em;
+    border-left: 0.1em solid green;
+    border-right: 0.1em solid blue;
+}
+
+#price_min{
+    grid-area: price_min;
+}
+
+#price_title{
+    text-align: center;
+    grid-area: price_title;
+}
+
+#price_max{
+    text-align: right;
+    grid-area: price_max;
+}
+
+#scale{
+    grid-area: scale;
+    height: 0.5em;
+    background-image: linear-gradient(to right, green 0%, yellow 25%, red 50%, purple 75%, blue 100%);
+}
+
+#price_per_m2_min{
+    grid-area: price_per_m2_min;
+}
+
+#price_per_m2_title{
+    text-align: center;
+    grid-area: price_per_m2_title;
+}
+
+#price_per_m2_title img{
+    vertical-align: top;
+}
+
+#price_per_m2_max{
+    text-align: right;
+    grid-area: price_per_m2_max;
+}
+
+.scale_title img{
+    height: 1.5em;
+    width: auto;
 }

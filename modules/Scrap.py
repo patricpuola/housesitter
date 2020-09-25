@@ -1,16 +1,103 @@
 #!/usr/bin/python3
+from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-import os, time
+import os, time, atexit
 import setup
 from db import DBCon
 
-
 class Scrap:
+    VALID_BROWSERS = ["chrome","firefox"]
+    browser = "chrome"
+
+    BROWSER_LEFT = 0
+    BROWSER_RIGHT = 1
+    
+    # In non-headless mode browsers are split to left and right on the desktop
+    active_webdrivers = {BROWSER_LEFT:[], BROWSER_RIGHT:[]}
+
+    available_width = 0
+    available_height = 0
+
+    exit_process_registered = False
+
+    @classmethod
+    def setBrowser(cls, browser):
+        if browser.lower() not in cls.VALID_BROWSERS:
+            return False
+        cls.browser = browser.lower()
+
+    @classmethod
+    def getChromeOptions(cls):
+        chrome_options = webdriver.ChromeOptions()
+        if setup.getConfig()['headless']:
+            chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        return chrome_options
+
+    @classmethod
+    def getWebDriver(cls, side = BROWSER_LEFT):
+        cls.checkExitFunction()
+        if cls.browser == 'chrome':
+            chrome_path = setup.getWebDriverPath(cls.browser)
+            chrome_options = cls.getChromeOptions()
+            new_driver = webdriver.Chrome(chrome_path, options=chrome_options)
+            cls.active_webdrivers[side].append(new_driver)
+            return new_driver
+    
+    @classmethod
+    def initWebdriverWindows(cls):  
+        #TODO: test if headless needs window postioning
+        if setup.getConfig()['headless']:
+            return
+
+        testing_driver = None
+
+        # Window positioning and initial resize to avoid maximized window problems
+        for driver in cls.active_webdrivers[cls.BROWSER_LEFT]:
+            driver.set_window_rect(height = 480, width = 640, x = 0, y = 0)
+            if testing_driver is None:
+                testing_driver = driver
+        for driver in cls.active_webdrivers[cls.BROWSER_RIGHT]:
+            driver.set_window_rect(height = 480, width = 640, x = 0, y = 0)
+            if testing_driver is None:
+                testing_driver = driver
+
+        # TODO: necessary?
+        time.sleep(2)
+
+        testing_driver.maximize_window()
+        cls.available_width = testing_driver.get_window_size()['width']
+        cls.available_height = testing_driver.get_window_size()['height']
+
+        for driver in cls.active_webdrivers[cls.BROWSER_LEFT]:
+            driver.set_window_rect(height = cls.available_height, width = cls.available_width/2, x = 0, y = 0)
+        for driver in cls.active_webdrivers[cls.BROWSER_RIGHT]:
+            driver.set_window_rect(height = cls.available_height, width = cls.available_width/2, x = cls.available_width, y = 0)
+        return
+    
+    @classmethod
+    def checkExitFunction(cls):
+        if not cls.exit_process_registered:
+            atexit.register(cls.shutdownDrivers)
+            cls.exit_process_registered = True
+        return
+
+
+    @classmethod
+    def shutdownDrivers(cls):
+        for driver in cls.active_webdrivers[cls.BROWSER_LEFT]:
+            driver.quit()
+        for driver in cls.active_webdrivers[cls.BROWSER_RIGHT]:
+            driver.quit()
+        return
+
+
     @classmethod
     def buildXpathSelector(cls, tags, text):
         self_tags = list(map(lambda tag: "self::"+tag, tags))

@@ -89,8 +89,12 @@ class Geocode:
 		with DBCon.get().cursor() as cursor:
 			geocoding_preformed_int = int(Listing.GEOCODING_PREFORMED, 2)
 			cursor.execute("SELECT id, street_address, zip, city FROM listings WHERE flags & %s = 0", (geocoding_preformed_int,))
-			addresses = cursor.fetchall()
-			for row in addresses:
+			while (True):
+				row = cursor.fetchone()
+				if row == None:
+					break
+				if row['street_address'] == None or row['zip'] == None or row['city'] == None:
+					continue
 				full_address = row["street_address"]+", "+str(row["zip"])+" "+row["city"]
 				geo = cls.query(full_address)
 				if geo is not False:

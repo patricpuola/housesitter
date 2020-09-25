@@ -165,6 +165,10 @@ class Listing:
 	def save(self):
 		if self.id is not None:
 			self.sanitize()
+			if not self.validate():
+				with DBCon.get().cursor() as cursor:
+					cursor.execute("DELETE FROM listings WHERE id = {} LIMIT 1".format(self.id))
+				return False
 			with DBCon.get().cursor() as cursor:
 				cursor.execute("SHOW COLUMNS FROM listings")
 				table_columns = []
@@ -224,6 +228,17 @@ class Listing:
 				else:
 					cursor.execute("INSERT INTO listings (site, url, date_updated) VALUES (%s, %s, NOW())", (self.site, self.url))
 					self.id = cursor.lastrowid
+		return True
+	
+	def validate(self):
+		required_fields = ['street_address','zip','city','price']
+		missing_fields = []
+		for field in required_fields:
+			if getattr(self,field) is None:
+				missing_fields.append(field)
+		if len(missing_fields) > 0:
+			print("Housing has missing fields:\nid: {}".format(self.id)+"\nURL: {}".format(self.url)+"Fields: "+", ".join(missing_fields))
+			return False
 		return True
 
 	def addImage(self, image_url):

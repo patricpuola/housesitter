@@ -6,12 +6,11 @@ flags = sys.argv
 
 os.popen('pkill chromedriver')
 os.popen('pkill chrome')
-
-from selenium import webdriver
+'''
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import WebDriverException
-
+'''
 from Scrap import Scrap
 import vuokraovi_com
 import setup
@@ -44,39 +43,11 @@ if "empty" in flags:
 	setup.emptyTables()
 	sys.exit()
 
-# Chrome init
-BROWSER = 'chrome'
+Scrap.setBrowser("chrome")
+main_driver = Scrap.getWebDriver(Scrap.BROWSER_LEFT)
+deep_driver = Scrap.getWebDriver(Scrap.BROWSER_RIGHT)
 
-chrome_path = setup.getWebDriverPath(BROWSER)
-chrome_options = webdriver.ChromeOptions()
-if conf()['headless']:
-	chrome_options.add_argument("--headless")
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
-main_driver = webdriver.Chrome(chrome_path, options=chrome_options)
-deep_driver = webdriver.Chrome(chrome_path, options=chrome_options)
-
-# Window positioning and initial resize to avoid maximized window problems
-main_driver.set_window_rect(height = 480, width = 640, x = 0, y = 0)
-deep_driver.set_window_rect(height = 480, width = 640, x = 0, y = 0)
-
-time.sleep(2)
-
-main_driver.maximize_window()
-window_width = main_driver.get_window_size()['width']
-window_height = main_driver.get_window_size()['height']
-
-# Sidebar check (Ubuntu) (tested as unnecessary in chromedriver.85)
-#main_driver.fullscreen_window()
-#sidebar_compensation = main_driver.get_window_size()['width']-window_height
-#main_driver.fullscreen_window()
-sidebar_compensation = 0
-
-main_driver.set_window_rect(height = window_height, width = window_width/2, x = 0, y = 0)
-deep_driver.set_window_rect(height = window_height, width = window_width/2, x = window_width + sidebar_compensation, y = 0)
-# End of positioning and resizing
+Scrap.initWebdriverWindows()
 
 vuokraovi_com.getListings(main_driver, deep_driver)
 
-main_driver.quit()
-deep_driver.quit()

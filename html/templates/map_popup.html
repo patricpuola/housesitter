@@ -1,4 +1,3 @@
-`
 <div class="thumbnail_cont">
 {% if listing['thumbnail_url'] %}
     <img src="{{ listing['thumbnail_url'] }}">
@@ -6,8 +5,15 @@
     <img src="/static/no_images.svg">
 {% endif %}
 <div class="size">{{ listing.living_space_m2 }}m²</div>
+{% if not listing.price %}
+<div class="price">(No price)</div>
+{% else %}
 <div class="price">{{ '{:.2f}'.format(listing.price) }} &euro;/kk</div>
+{% endif %}
+<div class="url"><a href="{{ listing.url }}" target="_blank"><i class="fas fa-external-link-alt"></i></a></div>
 </div>
-<div class="type">{{ listing.housing_type}}</div>
-<div class="layout">{{ listing.layout }}</div>
-`
+<div class="popup_details">
+    <div class="type">{{ listing.housing_type.capitalize() }}</div>
+    <div class="layout">{{ listing.layout }}</div>
+    <div class="build_year">{{ listing.build_year }}</div>
+</div>

@@ -12,6 +12,16 @@ from pprint import pprint
 from housing import Cost, Listing
 from pprint import pprint
 
+'''
+Housing ad site
+	1. Load main page
+		a) Click away ads, cookie consent things and geolocation
+	2. Do a search (all preferrably or narrowed to an area)
+	3. Gather search results
+	4. Spawn deep_driver(s) and do the actual scraping
+		a) Grab images
+'''
+
 def getListings(driver, deep_driver):
 	driver.get("https://vuokraovi.com")
 	deep_driver.get("https://vuokraovi.com")
@@ -48,6 +58,7 @@ def getListings(driver, deep_driver):
 		page_nr += 1
 
 def scrapeResultPage(driver, deep_driver, page_nr, listings):
+	print("Scraping result page")
 	timeout = 5
 	original_listings = len(listings)
 
@@ -110,11 +121,16 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 
 		housing_type = Scrap.getTableCellByHeader(deep_driver, 'Tyyppi:')
 		price = Scrap.getTableCellByHeader(deep_driver, 'Vuokra:')
+		if price is None:
+			price = Scrap.getTableCellByHeader(deep_driver, 'Käyttövastike:')
 		layout = Scrap.getTableCellByHeader(deep_driver, 'Kuvaus:')
 		availability = Scrap.getTableCellByHeader(deep_driver, 'Vapautuminen:')
 		living_space_m2 = Scrap.getTableCellByHeader(deep_driver, 'Asuinpinta-ala:')
 		floor_and_max_floor_str = Scrap.getTableCellByHeader(deep_driver, 'Kerros:')
 		
+		floor = None
+		floor_max = None
+
 		if floor_and_max_floor_str is not None:
 			floor_and_max_floor = floor_and_max_floor_str.split("/", 1)
 
@@ -143,7 +159,6 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 
 	for listing in listings:
 		pass
-	sys.exit('done for now')
 	return (original_listings < len(listings))
 
 def getCosts(deep_driver):

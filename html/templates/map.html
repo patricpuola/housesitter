@@ -5,9 +5,35 @@
 <link rel="stylesheet" href="/static/map.css">
 <script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
 <script type="text/javascript" src="/static/map.js"></script>
+<style>
+    .marker{
+        background-size: contain;
+        background-repeat: no-repeat;
+        width: 2.5em;
+        height: 3.5em;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+
+    {% for marker_variation in marker_variations %}
+        .marker_intensity_{{ marker_variation[0] }}_{{ marker_variation[1] }}{
+            background-image: url('/asset/map_marker/{{ marker_variation[0] }}/{{ marker_variation[1] }}');
+        }
+
+    {% endfor %}
+</style>
 {% endblock %}
 {% block content %}
 <h2>Map</h2>
+<div id="dataset_analysis">
+    <div id="price_min">{{ '{:.2f}'.format(dataset_analysis['price_min']) }}&euro;</div>
+    <div id="price_title" class="scale_title">Price <img src="/asset/map_marker/50/101"></div>
+    <div id="price_max">{{ '{:.2f}'.format(dataset_analysis['price_max']) }}&euro;</div>
+    <div id="scale"></div>
+    <div id="price_per_m2_min">{{ '{:.2f}'.format(dataset_analysis['price_per_m2_min']) }}&euro;/m²</div>
+    <div id="price_per_m2_title" class="scale_title">Price/m² <img src="/asset/map_marker/101/50"></div>
+    <div id="price_per_m2_max">{{ '{:.2f}'.format(dataset_analysis['price_per_m2_max']) }}&euro;/m²</div>
+</div>
 <div id="map">
     {# MapBox Map #}
 </div>
@@ -20,78 +46,42 @@
         zoom: {{ starting_point['zoom'] }}
     });
 
-    map.on('load', function () {
-        // Create a popup, but don't add it to the map yet.
-        var popup = new mapboxgl.Popup({
-            closeButton: false,
-            closeOnClick: false
-        });
+    var geoJson = {
+        'type': 'FeatureCollection',
+        'features': [
+            {% for listing in listings %}
+                {% if listing['lng'] is not none and listing['lat'] is not none %}
+                    {
+                        'type': 'Feature',
+                        'properties': {
+                            'description': `{% include "map_popup.html" %}`,
+                            'marker_intensity': {{ listing['analysis']['marker_intensity'] if listing['analysis']['marker_intensity'] != None else 'null' }},
+                            'marker_dot_intensity': {{ listing['analysis']['marker_dot_intensity'] if listing['analysis']['marker_dot_intensity'] != None else 'null' }}
+                        },
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': [{{ listing['lng'] }}, {{ listing['lat']}}]
+                        }    
+                    }{% if loop.index != loop.length %},{% endif %}
+                {% endif %}
+            {% endfor %}
+        ]
+    };
 
-        map.loadImage(
-            '/asset/map_marker/25',
-            // Add an image to use as a custom marker
-            function (error, image) {
-                if (error) throw error;
-                map.addImage('custom-marker', image);
+    // add markers to map
+    geoJson.features.forEach(function(marker) {
+        // create a HTML element for each feature
+        var el = document.createElement('div');
+        let marker_intensity = marker.properties.marker_intensity;
+        let marker_dot_intensity = marker.properties.marker_dot_intensity;
+        el.className = 'marker marker_intensity_'+marker_intensity+'_'+marker_dot_intensity;
 
-                map.addSource('places', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'FeatureCollection',
-                        'features': [
-                            {% for listing in listings %}
-                                {
-                                    'type': 'Feature',
-                                    'properties': {
-                                        'description':
-                                            {% include "map_popup.html" %}
-                                    },
-                                    'geometry': {
-                                        'type': 'Point',
-                                        'coordinates': [{{ listing['lng'] }}, {{ listing['lat']}}]
-                                    }    
-                                }{% if loop.index != loop.length %},{% endif %}
-                            {% endfor %}
-                        ]
-                    }
-                });
-
-                // Add a layer showing the places.
-                map.addLayer({
-                    'id': 'places',
-                    'type': 'symbol',
-                    'source': 'places',
-                    'layout': {
-                        'icon-image': 'custom-marker',
-                        'icon-allow-overlap': true
-                    }
-                });
-            }
-        );
-
-        map.on('mouseenter', 'places', function (e) {
-            // Change the cursor style as a UI indicator.
-            map.getCanvas().style.cursor = 'pointer';
-
-            var coordinates = e.features[0].geometry.coordinates.slice();
-            var description = e.features[0].properties.description;
-
-            // Ensure that if the map is zoomed out such that multiple
-            // copies of the feature are visible, the popup appears
-            // over the copy being pointed to.
-            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-            }
-
-            // Populate the popup and set its coordinates
-            // based on the feature found.
-            popup.setLngLat(coordinates).setHTML(description).addTo(map);
-        });
-
-        map.on('mouseleave', 'places', function () {
-            map.getCanvas().style.cursor = '';
-            popup.remove();
-        });
+        // make a marker for each feature and add to the map
+        new mapboxgl.Marker(el, { offset: [0, -22] })
+            .setLngLat(marker.geometry.coordinates)
+            .setPopup(new mapboxgl.Popup({ offset: 20, closeButton: false}) // add popups
+            .setHTML(marker.properties.description))
+            .addTo(map);
     });
 </script>
 {% endblock %}

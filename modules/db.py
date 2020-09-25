@@ -36,17 +36,19 @@ class DBCon:
 				cls.connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'], charset='utf8', cursorclass=cursorclass, autocommit=True)
 				if db is not None:
 					cls.connection.select_db(db)
+				cls.attempt = 0
 				return cls.connection
 			else:
 				nonpersistent_connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'], charset='utf8', cursorclass=cursorclass, autocommit=True)
 				if db is not None:
 					nonpersistent_connection.select_db(db)
+				cls.attempt = 0
 				return nonpersistent_connection
 		except pymysql.Error as e:
 			error_nr, error_text = [e.args[0], e.args[1]]
 			print("PyMySQL Error (%d): %s" % (error_nr, error_text))
 
 			if (cls.attempt < cls.attempts_max):
-				return cls.get(cls.attempt, cursor_type=cls.cursor_type_in_use)
+				return cls.get(cls.attempt, user=user, password=password, db=db, persistent=persistent, cursor_type=cls.cursor_type_in_use)
 			else:
 				return False
