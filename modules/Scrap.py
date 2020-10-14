@@ -49,7 +49,7 @@ class Scrap:
 
 	@classmethod
 	def getWebDriver(cls, headless = False, side=BROWSER_LEFT):
-		cls.checkExitFunction()
+		#cls.checkExitFunction()
 		if cls.browser == 'chrome':
 			chrome_path = setup.getWebDriverPath(cls.browser)
 			chrome_options = cls.getChromeOptions(headless = headless)

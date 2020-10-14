@@ -57,5 +57,6 @@ Scrap.initWebdriverWindows()
 vuokraovi_com.getListings(main_driver, deep_driver)
 '''
 
-etuovi = HousingSite('etuovi.com')
+etuovi = HousingSite('etuovi.com', 'fi')
+etuovi.setSearchTerms('Helsinki')
 etuovi.start()

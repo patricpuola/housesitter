@@ -2,8 +2,9 @@ from multiprocessing import Process
 from Scrap import Scrap
 import re
 import setup
+from lang import Lang
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, ElementClickInterceptedException
-
+from selenium.webdriver.common.by import By
 
 class HousingSite:
 	'''
@@ -16,12 +17,16 @@ class HousingSite:
 			a) Grab images
 	'''
 
-	def __init__(self, site):
+	def __init__(self, site, lang = "en"):
 		self.site = self.includeProtocol(site, False)
 		self.site_url = self.includeProtocol(site, True)
 		self.search_terms = {}
-		self.search_terms['free_search'] = None
+		self.search_terms['free_search'] = ""
 		self.search_terms['field_search'] = None
+		if isinstance(lang, str):
+			lang = lang.lower()
+			Lang.check(lang)
+			self.lang = lang
 
 
 	def includeProtocol(self, site, include):
@@ -41,9 +46,9 @@ class HousingSite:
 		else:
 			return site
 
-	def setSearchTerms(self, *args, **kwargs):
-		if args is not None:
-			self.search_terms['free_search'] = args
+	def setSearchTerms(self, search, **kwargs):
+		if search is not None:
+			self.search_terms['free_search'] = search
 		if kwargs is not None:
 			self.search_terms['field_search'] = kwargs
 		pass
@@ -83,16 +88,14 @@ class HousingSite:
 			print("Cannot find search box")
 			return False
 		
-		if len(text_inputs) == 1:
-			search_box = text_inputs[0]
-		else:
-			search_box = self.chooseSearchBox(text_inputs, 'location')
+		search_box = self.chooseSearchBox(text_inputs, 'location')
 		
-		search_box.send_keys(" ".join(self.search_terms['free_search']))
-		# Test this out
+		search_box.send_keys(self.search_terms['free_search'])
 		pass
 
 	def chooseSearchBox(self, elements, keywords):
+		if len(elements) == 1:
+			return elements[0]
 		# Scoring 0-100
 		id_match_value = 30
 		class_match_value = 20
@@ -136,10 +139,18 @@ class HousingSite:
 				element = driver.find_element_by_id(el_id)
 			elif el_classes is not None:
 				class_selector = '.'+re.sub(r'\s+', '.', el_classes.strip())
-				elements = driver.find_elements_by_css_selector(class_selector)
-				for el in elements:
-					print(el)
-					# Continue from here
+				blocker = driver.find_element(By.CSS_SELECTOR, class_selector)
+				blocking_parent = blocker.find_element(By.XPATH, '..')
+				buttons = None
+				while (True):
+					buttons = blocking_parent.find_elements(By.CSS_SELECTOR, 'button')
+					if len(buttons) == 0:
+						blocking_parent = blocking_parent.find_element(By.XPATH, '..')
+					else:
+						break
+				for button in buttons:
+					pass
+					# Implement language
 
 	def findAndRemoveBlocker(self, blocking_element):
 		pass

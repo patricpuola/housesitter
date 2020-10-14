@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-import sys, os, re, importlib, json, pprint, pymysql, requests, wget, pwd, grp, stat
+import sys, os, re, json, pprint, pymysql, requests, wget, pwd, grp, stat
+import subprocess
 from bs4 import BeautifulSoup
 from zipfile import ZipFile
 from pathlib import Path
@@ -7,7 +8,8 @@ from pathlib import Path
 required_packages = ['mariadb-server', 'wget']
 optional_packages = []
 
-required_modules = ['selenium', 'pymysql', 'beautifulsoup4']
+installed_modules = []
+required_modules = ['selenium', 'pymysql', 'beautifulsoup4', 'iso639']
 optional_modules = ['opencage']
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -142,11 +144,17 @@ def isPackageInstalled(package):
 	return False
 
 def isModuleInstalled(module):
-	try:
-		importlib.import_module(module)
-	except ImportError:
-		return False
-	return True
+	#if len(installed_modules) == 0: #check why global variable not found
+	out = subprocess.Popen(['pip3', 'list'],
+	stdout=subprocess.PIPE,
+	stderr=subprocess.STDOUT)
+	stdout, stderr = out.communicate()
+	text_output = stdout.decode("utf-8")
+	module_list = text_output.split("\n")[2:]
+	module_list = list(map(lambda line: re.split(r'\s+', line)[0], module_list))
+	module_list = list(filter(lambda module: len(module) > 0, module_list))
+	installed_modules = module_list
+	return module in installed_modules
 
 def init():
 	print("\n[ HOUSESITTER INITIAL SETUP ]")
