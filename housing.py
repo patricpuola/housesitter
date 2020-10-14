@@ -66,6 +66,7 @@ class Cost:
 		if flags <= self.ALL_FLAGS and flags > 0:
 			self.flags = self.flags | flags
 
+#TODO: create load() -function and refactor implementation
 class Listing:
 	TYPE_OWN_UNDEFINED = 0
 	TYPE_OWN_RENTAL = 1
@@ -76,6 +77,7 @@ class Listing:
 
 	INIT_FLAGS = b'00000000'
 	GEOCODING_PREFORMED = b'00000001'
+	EXPIRED = b'00000010'
 
 	def __init__(self, site, url):
 		self.id = None

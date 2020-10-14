@@ -11,5 +11,6 @@
    "db_collation": "utf8mb4_bin",
    "screenshot_enabled": true,
    "screenshot_directory": "images/",
-   "headless": false
+   "headless": false,
+   "threads": 6
 }

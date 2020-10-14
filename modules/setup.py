@@ -69,8 +69,9 @@ def getWebDriverPath(browser):
 		print("{} WebDriver missing, cannot find download link. Please download WebDriver manually".format(browser))
 		sys.exit()
 	
-	print("Webdriver missing for current version of {}, downloading matching one".format(browser))
 	tmp_zip = TMP_DIR + browser + "driver.zip"
+	print("Webdriver missing for current version of {}, downloading matching one".format(browser))
+	print("Downloading {} to {}".format(download_url, tmp_zip))
 	wget.download(download_url, tmp_zip)
 	with ZipFile(tmp_zip, 'r') as zipObject:
 		for filename in zipObject.namelist():

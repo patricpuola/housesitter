@@ -14,6 +14,7 @@ from selenium.common.exceptions import WebDriverException
 from Scrap import Scrap
 import vuokraovi_com
 import setup
+from housingsite import HousingSite
 from setup import getConfig as conf
 from setup import getCredentials as cred
 from pprint import pprint
@@ -43,6 +44,10 @@ if "empty" in flags:
 	setup.emptyTables()
 	sys.exit()
 
+if "expired" in flags:
+	Scrap.checkExpired()
+	sys.exit()
+'''
 Scrap.setBrowser("chrome")
 main_driver = Scrap.getWebDriver(Scrap.BROWSER_LEFT)
 deep_driver = Scrap.getWebDriver(Scrap.BROWSER_RIGHT)
@@ -50,4 +55,7 @@ deep_driver = Scrap.getWebDriver(Scrap.BROWSER_RIGHT)
 Scrap.initWebdriverWindows()
 
 vuokraovi_com.getListings(main_driver, deep_driver)
+'''
 
+etuovi = HousingSite('etuovi.com')
+etuovi.start()
