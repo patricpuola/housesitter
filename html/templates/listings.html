@@ -6,9 +6,14 @@
 {% endblock %}
 {% block content %}
     <h2>Latest scraped listings:</h2>
+    <style>
+        .listing_short[data-expired="true"]{
+            color: #999;
+        }
+    </style>
     <div id="listing_cont">
         {% for listing in listings %}
-            <div class="listing_short">
+            <div class="listing_short" data-expired="{% if listing.expired %}true{% else %}false{% endif %}">
                 <div class="thumbnail">
                     <div id="listing_images_{{ listing.id }}" class="images">
                     {% for image in listing.images[0:] %}
@@ -31,6 +36,7 @@
                     <div class="address_1">{{ listing.city }}, {{ listing.suburb }}</div>
                     <div class="address_2">{{ listing.street_address }}</div>
                     <div class="build_year">{{ listing.build_year }}</div>
+                    <div class="url"><a href="{{listing.url}}">Link</a></div>
                 </div>
                 <div class="agency">{{ listing.agency }}</div>
             </div>

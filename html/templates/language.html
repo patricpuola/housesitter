@@ -10,6 +10,7 @@
 		key = this.getAttribute('data-key');
 		language = this.getAttribute('data-language');
 		var cont = document.createElement('form');
+		cont.classList.add('edit_form');
 		var new_translation = document.createElement('input');
 		new_translation.setAttribute('type', 'text');
 		if (this.classList.contains('modify_translation')){
@@ -28,8 +29,8 @@
 		submit.setAttribute('type', 'button');
 		submit.value = "Submit";
 		cont.appendChild(new_translation);
-		cont.appendChild(cancel);
 		cont.appendChild(submit);
+		cont.appendChild(cancel);
 		var parent = this.parentNode;
 		parent.replaceChild(cont, this);
 		new_translation.focus();
@@ -81,13 +82,23 @@
 	document.addEventListener("DOMContentLoaded", function(e) { 
 		document.getElementById("new_lang_form").addEventListener("submit", function(e){
 			var add_lang = document.getElementById("new_lang_select").value;
-			window.location.href = "language/mgmt/add_lang/"+add_lang;
+			window.location.href = "/language/mgmt/add_lang/"+add_lang;
 		});
 
 		document.getElementById("new_key_form").addEventListener("submit", function(e){
 			var key = document.getElementById("new_key").value;
-			window.location.href = "language/mgmt/add_key/"+key;
+			window.location.href = "/language/mgmt/add_key/"+key;
 		});
+
+		var delete_keys = document.getElementsByClassName('delete_key');
+		for (var i = 0; i < delete_keys.length; i++){
+			delete_keys[i].addEventListener("click", function(e){
+				key = this.getAttribute('data-key');
+				if (confirm("Are you sure you want to delete "+key+"?")){
+					window.location.href = "/language/mgmt/delete_key/"+key;
+				}
+			});
+		}
 
 		btns = document.querySelectorAll(".add_translation,.modify_translation");
 		for (var i = 0; i < btns.length; i++){
@@ -128,6 +139,17 @@
 	.modify_translation:hover{
 		font-weight: bold;
 	}
+
+	.edit_form{
+		padding: 0.5em;
+		background-color: rgba(0,0,0,0.05);
+		border-radius: 0.1em;
+		box-shadow: 0 0.025em 0.15em dimgrey;
+	}
+
+	.edit_form input[type="button"]{
+		margin: 0.5em 0.5em 0em 0.5em;
+	}
 </style>
 <h2>Translations</h2>
 <div class="add">
@@ -149,7 +171,7 @@
 <div id="lang_cont">
 	<div class="header">Key</div>{% for lang in translated_languages %}<div class="header">{{ lang }}</div>{% endfor %}
 	{% for key in translations %}
-		<div>{{ key }}</div>{% for lang in translated_languages %}<div>{% if lang not in translations[key] %}<button class="add_translation" data-key="{{ key }}" data-language="{{ lang }}">+</button>{% else %}<a class="modify_translation" data-key="{{ key }}" data-language="{{ lang }}">{{ translations[key][lang] }}</a>{% endif %}</div>{% endfor %}
+		<div>{{ key }} <button class="delete_key" data-key="{{ key }}">-</button></div>{% for lang in translated_languages %}<div>{% if lang not in translations[key] %}<button class="add_translation" data-key="{{ key }}" data-language="{{ lang }}">+</button>{% else %}<a class="modify_translation" data-key="{{ key }}" data-language="{{ lang }}">{{ translations[key][lang] }}</a>{% endif %}</div>{% endfor %}
 	{% endfor %}
 </div>
 {% endblock %}

@@ -31,15 +31,17 @@ class DBCon:
 		else:
 			cursorclass = pymysql.cursors.DictCursor
 
+		conversions = pymysql.converters.conversions
+		conversions[pymysql.FIELD_TYPE.BIT] = lambda x: int.from_bytes(x, byteorder='big')
 		try:
 			if persistent is True:
-				cls.connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'], charset='utf8', cursorclass=cursorclass, autocommit=True)
+				cls.connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'], charset='utf8', cursorclass=cursorclass, autocommit=True, conv=conversions)
 				if db is not None:
 					cls.connection.select_db(db)
 				cls.attempt = 0
 				return cls.connection
 			else:
-				nonpersistent_connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'], charset='utf8', cursorclass=cursorclass, autocommit=True)
+				nonpersistent_connection = pymysql.connect(host=setup.getConfig()['db_host'], user=user, passwd=password, unix_socket=setup.getConfig()['db_unix_socket'], charset='utf8', cursorclass=cursorclass, autocommit=True, conv=conversions)
 				if db is not None:
 					nonpersistent_connection.select_db(db)
 				cls.attempt = 0

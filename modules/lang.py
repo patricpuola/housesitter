@@ -5,10 +5,13 @@ class Lang:
 	@classmethod
 	def get(cls, key, lang):
 		cls.check(lang)
-		with db.DBCon.get(cursor_type=db.DBCon.CURSOR_TYPE_NORMAL).cursor() as cursor:
-			cursor.execute("SELECT value FROM languages WHERE language = '%s' LIMIT 1" % (lang,))
-			value = cursor.fetchone()
-		return value
+		with db.DBCon.get().cursor() as cursor:
+			cursor.execute("SELECT value FROM languages WHERE language = '%s' AND `key` = '%s' LIMIT 1" % (lang,key))
+			row = cursor.fetchone()
+		if row is not None:
+			return row['value']
+		else:
+			return None
 
 	@classmethod
 	def set(cls, key, value, lang):
@@ -33,6 +36,12 @@ class Lang:
 			else:
 				cursor.execute("INSERT INTO languages (`key`, language, value) VALUES ('%s', NULL, NULL)" % (key,))
 				return True
+
+	@classmethod
+	def deleteKey(cls, key):
+		with db.DBCon.get().cursor() as cursor:
+			cursor.execute("DELETE FROM languages WHERE `key` = '%s'" % (key,))
+			return True
 
 	@classmethod
 	def addLanguage(cls, language):

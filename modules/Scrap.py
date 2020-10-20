@@ -6,7 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
-from housing import Cost, Listing
+import housing
 import os, sys, time, atexit, re
 import multiprocessing
 import setup
@@ -200,7 +200,7 @@ class Scrap:
 
 	@classmethod
 	def checkExpired(cls, listing_id=None):
-		expired_int = int(Listing.EXPIRED, 2)
+		expired_int = int(housing.Listing.EXPIRED, 2)
 		listings_to_check = []
 		with db.DBCon.get().cursor() as cursor:
 			#TODO: add option for checking a specific listing by id
@@ -209,7 +209,7 @@ class Scrap:
 			listings_to_check = cursor.fetchall()
 
 		lookup_nodes = {}
-		for i in range(0, setup.getConfig()['multiprocess_threads_max']):
+		for i in range(0, setup.getConfig()['threads']):
 			lookup_nodes['node_'+str(i)] = {'process': None, 'listings': []}
 		
 		# Divide listings evenly to each node
@@ -219,7 +219,7 @@ class Scrap:
 				print('No expiry check string found for site: %s' % listing['site'])
 				del listings_to_check[listing]
 				continue
-			node = "node_"+str(listing_idx % setup.getConfig()['multiprocess_threads_max'])
+			node = "node_"+str(listing_idx % setup.getConfig()['threads'])
 			lookup_nodes[node]['listings'].append(listing)
 			listing_idx += 1
 
@@ -259,7 +259,7 @@ class Scrap:
 		driver = cls.getWebDriver(headless = True)
 		cls.initWebdriverWindows(driver)
 
-		expired_int = int(Listing.EXPIRED, 2)
+		expired_int = int(housing.Listing.EXPIRED, 2)
 		for listing in listings:
 			driver.get(listing['url'])
 			cls.waitUntilLoaded(driver)

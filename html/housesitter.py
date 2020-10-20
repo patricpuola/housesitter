@@ -7,6 +7,7 @@ sys.path.insert(1, r'../modules')
 import db
 import lang
 import setup
+import housing
 
 app = flask.Flask(__name__)
 
@@ -21,7 +22,7 @@ def getNavLinks():
 def getListings(count = 20, offset = 0, getCoordinates = False):
     listings = []
     with db.DBCon.get().cursor() as cursor:
-        cursor.execute("SELECT id, url, site, housing_type, description, street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year FROM listings ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (count, offset))
+        cursor.execute("SELECT id, url, site, housing_type, description, street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year, flags FROM listings ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (count, offset))
         with db.DBCon.get().cursor() as geo_cursor:
             while True:
                 listing = cursor.fetchone()
@@ -43,6 +44,8 @@ def getListings(count = 20, offset = 0, getCoordinates = False):
                         if coords is not None:
                             listing["lng"] = coords['lng']
                             listing["lat"] = coords['lat']
+                listing['expired'] = listing['flags'] & int(housing.Listing.EXPIRED, 2) > 0
+                #listing['expired'] = listing['flags']
                 listings.append(listing)
     return listings
 
@@ -204,10 +207,10 @@ def language_mgmt(action=None, value=None):
         pass
     if action == 'add_lang' and value is not None:
         if (lang.Lang.addLanguage(value)):
-            return flask.redirect(flask.url_for('language'))
+            return flask.redirect(flask.url_for('language'), 303)
         else:
             return "This language column already exists"
-    elif action == 'set_translation':
+    elif action == 'set_translation':   # ajax
         key = flask.request.form.get("key")
         language = flask.request.form.get("language")
         value = flask.request.form.get("value")
@@ -215,6 +218,14 @@ def language_mgmt(action=None, value=None):
             return "OK"
         else:
             return "ERROR"
+    elif action == 'add_key' and value is not None:
+        key = value
+        lang.Lang.addKey(key)
+        return flask.redirect(flask.url_for('language'), 303)
+    elif action == 'delete_key' and value is not None:
+        key = value
+        lang.Lang.deleteKey(key)
+        return flask.redirect(flask.url_for('language'), 303)
 
 @app.route('/image/<int:id>')
 def image(id = None):

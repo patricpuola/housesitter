@@ -2,6 +2,9 @@ import Scrap
 import re
 import setup
 import lang
+import Levenshtein
+import time
+import sys
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.common.by import By
 
@@ -22,11 +25,9 @@ class HousingSite:
 		self.search_terms = {}
 		self.search_terms['free_search'] = ""
 		self.search_terms['field_search'] = None
-		if isinstance(lang, str):
-			language = language.lower()
-			lang.Lang.check(language)
-			self.language = language
-
+		language = language.lower()
+		lang.Lang.check(language)
+		self.language = language
 
 	def includeProtocol(self, site, include):
 		included = False
@@ -75,9 +76,12 @@ class HousingSite:
 			return False
 
 		for button in buttons:
-			if re.search(r'hae', button.text.lower()):
+			search_text = lang.Lang.get('search', self.language)
+			if re.search(r''+search_text, button.text.lower()):
 				self.safeClick(self.main_driver, button)
-				# test this one out as well
+			else:
+				print("Cannot find search button with text: "+search_text)
+				sys.exit()
 
 	def inputSearchTerms(self):
 		search_box = None
@@ -129,6 +133,11 @@ class HousingSite:
 		try:
 			button.click()
 		except ElementClickInterceptedException as e:
+			button_text_keys = ['accept', 'accept-all']
+			button_texts = []
+			for text_key in button_text_keys:
+				translated_text = lang.Lang.get(text_key, self.language)
+				button_texts.append(translated_text)
 			error = str(e)
 			match = re.search(r'Other element would receive the click: ([^\n]+)', error)
 			element = match.group(1)
@@ -140,16 +149,23 @@ class HousingSite:
 				class_selector = '.'+re.sub(r'\s+', '.', el_classes.strip())
 				blocker = driver.find_element(By.CSS_SELECTOR, class_selector)
 				blocking_parent = blocker.find_element(By.XPATH, '..')
-				buttons = None
 				while (True):
-					buttons = blocking_parent.find_elements(By.CSS_SELECTOR, 'button')
-					if len(buttons) == 0:
-						blocking_parent = blocking_parent.find_element(By.XPATH, '..')
+					found_buttons = blocking_parent.find_elements(By.CSS_SELECTOR, 'button')
+					if len(found_buttons) == 0:
+						blocking_parent = blocking_parent.find_element(By.XPATH, '..')	# move to parent
 					else:
 						break
-				for button in buttons:
-					pass
-					# Implement language
+				closest_match = None
+				for idx, found_button in enumerate(found_buttons):
+					for trn_text in button_texts:
+						distance = Levenshtein.distance(found_button.text, trn_text)
+						if closest_match is None or closest_match[1] > distance:
+							closest_match = (idx, distance)
+				element = found_buttons[closest_match[0]]
+			element.click()
+			time.sleep(2)
+			button.click()
+
 
 	def findAndRemoveBlocker(self, blocking_element):
 		pass
