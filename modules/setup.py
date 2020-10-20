@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 import sys, os, re, json, pprint, pymysql, requests, wget, pwd, grp, stat
 import subprocess
-from bs4 import BeautifulSoup
-from zipfile import ZipFile
-from pathlib import Path
+import bs4
+import zipfile
+import pathlib
+import lang
+import db
 
 required_packages = ['mariadb-server', 'wget']
 optional_packages = []
@@ -12,7 +14,7 @@ installed_modules = []
 required_modules = ['selenium', 'pymysql', 'beautifulsoup4', 'iso639']
 optional_modules = ['opencage']
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONFIG_FILE = ROOT / 'config.json'
 CREDENTIALS_FILE = ROOT / 'credentials.json.secure'
 
@@ -56,7 +58,7 @@ def getWebDriverPath(browser):
 			webdriver_file = "chromedriver." + main_version
 			if not os.path.exists(WEBDRIVER_DIR / webdriver_file):
 				main_page_html = requests.get(webdrivers[browser]['url'] + 'downloads').text
-				soup = BeautifulSoup(main_page_html, 'html.parser')
+				soup = bs4.BeautifulSoup(main_page_html, 'html.parser')
 				for link in soup.find_all('a', href=True, text=re.compile(r'ChromeDriver ' + main_version)):
 					full_version = str(re.search(r"[\d\.]+", link.text)[0])
 					download_url = webdrivers[browser]['download_url'] + full_version + '/chromedriver_linux64.zip'
@@ -75,7 +77,7 @@ def getWebDriverPath(browser):
 	print("Webdriver missing for current version of {}, downloading matching one".format(browser))
 	print("Downloading {} to {}".format(download_url, tmp_zip))
 	wget.download(download_url, tmp_zip)
-	with ZipFile(tmp_zip, 'r') as zipObject:
+	with zipfile.ZipFile(tmp_zip, 'r') as zipObject:
 		for filename in zipObject.namelist():
 			if (filename.endswith('driver')):
 				with open(WEBDRIVER_DIR / webdriver_file, "wb") as webdriver_handle:
@@ -124,8 +126,6 @@ def getCredentials(force = False):
 
 	return credentials
 
-import db
-
 def getPackageVersion(package):
 	response = os.popen('apt -qq list %s 2>/dev/null' % package).read()
 	lines = response.split("\n")
@@ -151,12 +151,14 @@ def isModuleInstalled(module):
 	stdout, stderr = out.communicate()
 	text_output = stdout.decode("utf-8")
 	module_list = text_output.split("\n")[2:]
-	module_list = list(map(lambda line: re.split(r'\s+', line)[0], module_list))
+	module_list = list(map(lambda line: re.split(r'\s+', line)[0].lower(), module_list))
 	module_list = list(filter(lambda module: len(module) > 0, module_list))
 	installed_modules = module_list
-	return module in installed_modules
+	return module.lower() in installed_modules
 
 def init():
+	lang.Lang.addKey('search')
+	lang.Lang.addKey('accept-all')
 	print("\n[ HOUSESITTER INITIAL SETUP ]")
 
 	if config['initial_setup_performed']:
@@ -195,7 +197,6 @@ def init():
 	sys.exit()
 
 def depedencyCheck():
-	import db
 	print("Dependency check...")
 
 	missing_required_packages = []
@@ -247,7 +248,6 @@ def depedencyCheck():
 		print("Dependencies OK\n")
 
 def checkUserDB():
-	from db import DBCon
 	user_creation = "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'" % (getCredentials()['mysql']['username'], getConfig()['db_host'], getCredentials()['mysql']['password'])
 	database_creation = "CREATE DATABASE IF NOT EXISTS %s CHARACTER SET %s COLLATE %s" % (getConfig()['db_name'], getConfig()['db_character_set'], getConfig()['db_collation'])
 	user_grant = "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%s'" % (getConfig()['db_name'], getCredentials()['mysql']['username'], getConfig()['db_host'])
@@ -267,7 +267,7 @@ def checkUserDB():
 		sys.exit()
 	'''
 	root_pwd = getCredentials()['mysql_root_pwd']
-	root_connection = DBCon.get(user='root', password=root_pwd, db=None, persistent=False)
+	root_connection = db.DBCon.get(user='root', password=root_pwd, db=None, persistent=False)
 
 	if root_connection is False:
 		print("Unable to connect as root, aborting setup")
@@ -298,7 +298,7 @@ def checkUserDB():
 	return True
 
 def createTables():
-	from db import DBCon
+	
 	table_template_path = ROOT / "table_templates"
 	# TODO: check line below
 	table_templates = [f for f in os.listdir(table_template_path) if os.path.isfile(os.path.join(table_template_path, f))]
@@ -306,7 +306,7 @@ def createTables():
 
 	for table_template in table_templates:
 		with open(os.path.join(table_template_path, table_template), "r") as template_file:
-			with DBCon.get().cursor() as cursor:
+			with db.DBCon.get().cursor() as cursor:
 				cursor.execute(template_file.read())
 
 	return True
@@ -315,9 +315,8 @@ def emptyTables():
 	if input("Are you sure you want to TRUNCATE() all tables? [Y/N]: ").lower() != 'y':
 		print("[ DONE ]\n")
 		return
-	from db import DBCon
 	print("Emptying all tables...")
-	with DBCon.get(cursor_type=DBCon.CURSOR_TYPE_NORMAL).cursor() as cursor:
+	with db.DBCon.get(cursor_type=db.DBCon.CURSOR_TYPE_NORMAL).cursor() as cursor:
 		cursor.execute('SHOW TABLES')
 		tables = cursor.fetchall()
 		for table in tables:

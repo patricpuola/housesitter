@@ -1,15 +1,17 @@
 #!/usr/bin/python3
-from flask import Flask, render_template, Response
-from cairosvg import svg2png
+import flask
+import cairosvg
 import sys, math
-from io import BytesIO
+import io
 sys.path.insert(1, r'../modules')
-from setup import getConfig, ROOT, getCredentials
-from db import DBCon
-app = Flask(__name__)
+import db
+import lang
+import setup
+
+app = flask.Flask(__name__)
 
 def getNavLinks():
-    sites = ['map', 'listings']
+    sites = ['map', 'listings', 'language']
     links = []
     links.append({'href':'/', 'text':'Stats'})
     for site in sites:
@@ -18,9 +20,9 @@ def getNavLinks():
 
 def getListings(count = 20, offset = 0, getCoordinates = False):
     listings = []
-    with DBCon.get().cursor() as cursor:
+    with db.DBCon.get().cursor() as cursor:
         cursor.execute("SELECT id, url, site, housing_type, description, street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year FROM listings ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (count, offset))
-        with DBCon.get().cursor() as geo_cursor:
+        with db.DBCon.get().cursor() as geo_cursor:
             while True:
                 listing = cursor.fetchone()
                 if listing == None:
@@ -35,7 +37,7 @@ def getListings(count = 20, offset = 0, getCoordinates = False):
                 if getCoordinates is True:
                     if listing['street_address'] is not None and listing['zip'] is not None or listing['city'] is not None:
                         full_address = listing["street_address"]+", "+str(listing["zip"])+" "+listing["city"]
-                        full_address = DBCon.get().escape_string(full_address)
+                        full_address = db.DBCon.get().escape_string(full_address)
                         geo_cursor.execute("SELECT lat, lng FROM geocodes WHERE query = '{}' LIMIT 1".format(full_address))
                         coords = geo_cursor.fetchone()
                         if coords is not None:
@@ -46,7 +48,7 @@ def getListings(count = 20, offset = 0, getCoordinates = False):
 
 def getImageIds(listing_id: int, limit = None):
     image_ids = []
-    with DBCon.get().cursor() as cursor:
+    with db.DBCon.get().cursor() as cursor:
         if limit is not None:
             cursor.execute("SELECT id FROM images WHERE listing_id = %d LIMIT %d" % (listing_id, limit))
         else:
@@ -57,18 +59,18 @@ def getImageIds(listing_id: int, limit = None):
     return image_ids
 
 def getImageData(image_id: int):
-    image_dir = getConfig()['screenshot_directory']
-    img_db = DBCon.get(persistent=False)
+    image_dir = setup.getConfig()['screenshot_directory']
+    img_db = db.DBCon.get(persistent=False)
     with img_db.cursor() as cursor:
         cursor.execute("SELECT uuid, extension, mime_type FROM images WHERE id = %d LIMIT 1" % image_id)
         image = cursor.fetchone()
         filename = image['uuid'] + image['extension']
     img_db.close()
-    return (ROOT / image_dir / filename, image['mime_type'])
+    return (setup.ROOT / image_dir / filename, image['mime_type'])
 
 def getStats():
     stats = []
-    with DBCon.get().cursor() as cursor:
+    with db.DBCon.get().cursor() as cursor:
         cursor.execute("SELECT 'Listings' as `stat`, count(id) as `value` FROM listings")
         stats.append(cursor.fetchone())
         cursor.execute("SELECT 'Images' as `stat`, count(id) as `value` FROM images")
@@ -91,14 +93,14 @@ def getZoom(lng_range, lat_range):
 
 def getListingMarkers():
     markers = None
-    with DBCon.get().cursor() as cursor:
+    with db.DBCon.get().cursor() as cursor:
         cursor.execute("SELECT lng, lat FROM geocodes")
         markers = cursor.fetchall()
     return markers
 
 def getMapStartingPoint():
     starting_point = {'lng':None, 'lat':None, 'zoom': 9}
-    with DBCon.get().cursor() as cursor:
+    with db.DBCon.get().cursor() as cursor:
         cursor.execute("SELECT MIN(lng) as lng_min, MAX(lng) as lng_max, MIN(lat) as lat_min, MAX(lat) as lat_max FROM geocodes")
         map_values = cursor.fetchone()
     if map_values:
@@ -172,7 +174,7 @@ def getRGB(value):
 
 @app.route('/')
 def index():
-    return render_template('index.html', nav=getNavLinks(), stats=getStats())
+    return flask.render_template('index.html', nav=getNavLinks(), stats=getStats())
 
 @app.route('/listings')
 @app.route('/listings/<int:detail>')
@@ -186,7 +188,33 @@ def listings(detail=None):
             for image_id in image_ids:
                 listing['images'].append({'url':'/image/'+str(image_id), 'id':image_id})
            
-    return render_template('listings.html', nav=getNavLinks(), listings=listings, detail=detail)
+    return flask.render_template('listings.html', nav=getNavLinks(), listings=listings, detail=detail)
+
+@app.route('/language')
+def language():
+    translations = lang.Lang.getAll()
+    lang_abbr = lang.Lang.getLangAbbr()
+    translated_languages = lang.Lang.getLanguages()
+    return flask.render_template('language.html', nav=getNavLinks(), translations=translations, lang_abbr=lang_abbr, translated_languages=translated_languages)
+
+@app.route('/language/mgmt/<action>', methods=["POST", "GET"])
+@app.route('/language/mgmt/<action>/<value>', methods=["POST", "GET"])
+def language_mgmt(action=None, value=None):
+    if action is None:
+        pass
+    if action == 'add_lang' and value is not None:
+        if (lang.Lang.addLanguage(value)):
+            return flask.redirect(flask.url_for('language'))
+        else:
+            return "This language column already exists"
+    elif action == 'set_translation':
+        key = flask.request.form.get("key")
+        language = flask.request.form.get("language")
+        value = flask.request.form.get("value")
+        if (lang.Lang.set(key, value, language)):
+            return "OK"
+        else:
+            return "ERROR"
 
 @app.route('/image/<int:id>')
 def image(id = None):
@@ -194,11 +222,11 @@ def image(id = None):
     img_data = None
     with open(img_path, 'rb') as img_file:
         img_data = img_file.read()
-    return Response(response=img_data, headers={'Content-type':mime_type}, mimetype=mime_type)
+    return flask.Response(response=img_data, headers={'Content-type':mime_type}, mimetype=mime_type)
 
 @app.route('/map')
 def map():
-    access_token = getCredentials()['mapbox']['access_token']
+    access_token = setup.getCredentials()['mapbox']['access_token']
     marker_variations = []
     listings = getListings(200, 0, True)
     dataset_analysis = {}
@@ -223,7 +251,7 @@ def map():
             if marker_variation not in marker_variations:
                 marker_variations.append(marker_variation)
 
-    return render_template('map.html', nav=getNavLinks(), access_token=access_token, starting_point=getMapStartingPoint(), listings=listings, marker_variations=marker_variations, dataset_analysis=dataset_analysis)
+    return flask.render_template('map.html', nav=getNavLinks(), access_token=access_token, starting_point=getMapStartingPoint(), listings=listings, marker_variations=marker_variations, dataset_analysis=dataset_analysis)
 
 @app.route('/asset/map_marker/')
 @app.route('/asset/map_marker/<int:intensity>')
@@ -235,13 +263,13 @@ def asset(intensity = None, dot_intensity = None):
         dot_intensity = None
     color = getRGB(intensity)
     dot_color = getRGB(dot_intensity)
-    asset = ROOT / "html/static/marker.svg"
+    asset = setup.ROOT / "html/static/marker.svg"
     with open(asset, 'r') as asset_file:
         asset_data = asset_file.read()
     asset_data = asset_data.replace('{{ marker_color }}', 'rgb({},{},{})'.format(*color)).replace('{{ dot_color }}', 'rgb({},{},{})'.format(*dot_color))
-    png = BytesIO()
-    svg2png(bytestring=asset_data, write_to=png)
-    return Response(response=png.getvalue(), headers={'Content-type':'image/png'}, mimetype='image/png')
+    png = io.BytesIO()
+    cairosvg.svg2png(bytestring=asset_data, write_to=png)
+    return flask.Response(response=png.getvalue(), headers={'Content-type':'image/png'}, mimetype='image/png')
 
 if __name__ == '__main__':
     app.debug = True

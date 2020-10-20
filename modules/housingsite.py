@@ -1,8 +1,7 @@
-from multiprocessing import Process
-from Scrap import Scrap
+import Scrap
 import re
 import setup
-from lang import Lang
+import lang
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.common.by import By
 
@@ -17,16 +16,16 @@ class HousingSite:
 			a) Grab images
 	'''
 
-	def __init__(self, site, lang = "en"):
+	def __init__(self, site, language = "en"):
 		self.site = self.includeProtocol(site, False)
 		self.site_url = self.includeProtocol(site, True)
 		self.search_terms = {}
 		self.search_terms['free_search'] = ""
 		self.search_terms['field_search'] = None
 		if isinstance(lang, str):
-			lang = lang.lower()
-			Lang.check(lang)
-			self.lang = lang
+			language = language.lower()
+			lang.Lang.check(language)
+			self.language = language
 
 
 	def includeProtocol(self, site, include):
@@ -54,21 +53,21 @@ class HousingSite:
 		pass
 
 	def start(self):
-		Scrap.setBrowser("chrome")
-		self.main_driver = Scrap.getWebDriver(Scrap.BROWSER_LEFT)
-		Scrap.initWebdriverWindows(self.main_driver)
+		Scrap.Scrap.setBrowser("chrome")
+		self.main_driver = Scrap.Scrap.getWebDriver(Scrap.Scrap.BROWSER_LEFT)
+		Scrap.Scrap.initWebdriverWindows(self.main_driver)
 		self.deep_nodes = {}
 		for i in range(0, setup.getConfig()['threads']):
 			self.deep_nodes['node_' +
 							str(i)] = {'process': None, 'listing_urls': []}
 		self.main_driver.get(self.site_url)
-		Scrap.waitUntilLoaded(self.main_driver)
+		Scrap.Scrap.waitUntilLoaded(self.main_driver)
 		if self.search_terms['free_search'] is not None:
 			self.inputSearchTerms()
 		self.search()
 
 	def search(self):
-		search_xpath = Scrap.buildXpathSelector(tags = ['button'])
+		search_xpath = Scrap.Scrap.buildXpathSelector(tags = ['button'])
 		try:
 			buttons = self.main_driver.find_elements_by_xpath(search_xpath)
 		except NoSuchElementException:
@@ -78,7 +77,7 @@ class HousingSite:
 		for button in buttons:
 			if re.search(r'hae', button.text.lower()):
 				self.safeClick(self.main_driver, button)
-				# this this one out as well
+				# test this one out as well
 
 	def inputSearchTerms(self):
 		search_box = None
@@ -116,8 +115,8 @@ class HousingSite:
 		return elements[winner]
 
 	def scrape(self, listing_urls):
-		driver = Scrap.getWebDriver(Scrap.BROWSER_RIGHT)
-		Scrap.initWebdriverWindows(driver)
+		driver = Scrap.Scrap.getWebDriver(Scrap.Scrap.BROWSER_RIGHT)
+		Scrap.Scrap.initWebdriverWindows(driver)
 
 	def extractAttribute(self, element_str, attribute):
 		match = re.search(r''+attribute+'=[\'"]([^\'"]+)[\'"]', element_str, re.IGNORECASE)

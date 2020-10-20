@@ -1,6 +1,7 @@
 #map{
     width: 100%;
     min-height: 50em;
+    box-shadow: 0 0.1em 0.25em dimgray;
 }
 
 .thumbnail_cont{
@@ -67,6 +68,7 @@
 }
 
 #price_min{
+    padding-left: 0.25em;
     grid-area: price_min;
 }
 
@@ -76,6 +78,7 @@
 }
 
 #price_max{
+    padding-right: 0.25em;
     text-align: right;
     grid-area: price_max;
 }
@@ -87,6 +90,7 @@
 }
 
 #price_per_m2_min{
+    padding-left: 0.25em;
     grid-area: price_per_m2_min;
 }
 
@@ -100,6 +104,7 @@
 }
 
 #price_per_m2_max{
+    padding-right: 0.25em;
     text-align: right;
     grid-area: price_per_m2_max;
 }

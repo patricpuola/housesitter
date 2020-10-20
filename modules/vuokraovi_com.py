@@ -5,12 +5,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-from Scrap import Scrap
+import Scrap
 import sys, os, time, re
 import setup
-from pprint import pprint
 from housing import Cost, Listing
-from pprint import pprint
 
 '''
 Housing ad site
@@ -30,7 +28,7 @@ def getListings(driver, deep_driver):
 
 	listings = []
 
-	if not Scrap.waitFor(driver, [(By.XPATH, getXpath("search_box")), (By.XPATH, getXpath("search_button"))], timeout):
+	if not Scrap.Scrap.waitFor(driver, [(By.XPATH, getXpath("search_box")), (By.XPATH, getXpath("search_button"))], timeout):
 		print("Vuokraovi.com timed out")
 	print("Vuokraovi.com frontpage loaded")
 
@@ -38,15 +36,15 @@ def getListings(driver, deep_driver):
 
 	deep_driver.find_element(By.XPATH, getXpath("location_deny")).send_keys(Keys.SPACE)
 
-	Scrap.checkAndRemoveBlocker(driver, 'Käytämme evästeitä', 'Hyväksy')
-	Scrap.checkAndRemoveBlocker(deep_driver, 'Käytämme evästeitä', 'Hyväksy')
+	Scrap.Scrap.checkAndRemoveBlocker(driver, 'Käytämme evästeitä', 'Hyväksy')
+	Scrap.Scrap.checkAndRemoveBlocker(deep_driver, 'Käytämme evästeitä', 'Hyväksy')
 
 	search_box = driver.find_element(By.XPATH, getXpath("search_box"))
 	search_button = driver.find_element(By.XPATH, getXpath("search_button"))
 
 	search_box.send_keys("Helsinki")
 
-	if not Scrap.waitFor(driver, (By.CSS_SELECTOR, "ul.ui-autocomplete > li"), timeout):
+	if not Scrap.Scrap.waitFor(driver, (By.CSS_SELECTOR, "ul.ui-autocomplete > li"), timeout):
 		print("List item timeout")
 	search_box.send_keys(Keys.ENTER)
 
@@ -58,16 +56,16 @@ def getListings(driver, deep_driver):
 		page_nr += 1
 
 def scrapeResultPage(driver, deep_driver, page_nr, listings):
-	print("Scraping result page")
+	print("Scrap.Scraping result page")
 	timeout = 5
 	original_listings = len(listings)
 
-	if not Scrap.waitFor(driver, (By.CLASS_NAME, "list-item-container"), timeout):
+	if not Scrap.Scrap.waitFor(driver, (By.CLASS_NAME, "list-item-container"), timeout):
 		print("Result display timeout")
 
 	ads = driver.find_elements_by_class_name("list-item-container")
 
-	deepScrape = {}
+	deepScrap.Scrape = {}
 
 	for ad in ads:
 		ad_index = len(listings)
@@ -86,12 +84,12 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 		listing.fill(ownership_type = Listing.TYPE_OWN_RENTAL)
 
 		listings.append(listing)
-		deepScrape[ad_index] = url
+		deepScrap.Scrape[ad_index] = url
 
-	for ad_index in deepScrape:
-		url = deepScrape[ad_index]
+	for ad_index in deepScrap.Scrape:
+		url = deepScrap.Scrape[ad_index]
 		deep_driver.get(url)
-		if not Scrap.waitFor(deep_driver, (By.XPATH, getXpath("deep_accordion")), timeout):
+		if not Scrap.Scrap.waitFor(deep_driver, (By.XPATH, getXpath("deep_accordion")), timeout):
 			print("Deep result accordion display timeout")
 
 		try:
@@ -110,23 +108,23 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 			zip = None
 			city = None
 
-		condition = Scrap.getTableCellByHeader(deep_driver, 'Yleiskunto:')
-		build_year = Scrap.getTableCellByHeader(deep_driver, 'Rakennusvuosi:')
-		total_space_m2 = Scrap.getTableCellByHeader(deep_driver, 'Kokonaispinta-ala:')
+		condition = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Yleiskunto:')
+		build_year = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Rakennusvuosi:')
+		total_space_m2 = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Kokonaispinta-ala:')
 
 		try:
 			agency = deep_driver.find_element(By.XPATH, getXpath("deep_agency")).text
 		except NoSuchElementException:
 			agency = None
 
-		housing_type = Scrap.getTableCellByHeader(deep_driver, 'Tyyppi:')
-		price = Scrap.getTableCellByHeader(deep_driver, 'Vuokra:')
+		housing_type = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Tyyppi:')
+		price = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Vuokra:')
 		if price is None:
-			price = Scrap.getTableCellByHeader(deep_driver, 'Käyttövastike:')
-		layout = Scrap.getTableCellByHeader(deep_driver, 'Kuvaus:')
-		availability = Scrap.getTableCellByHeader(deep_driver, 'Vapautuminen:')
-		living_space_m2 = Scrap.getTableCellByHeader(deep_driver, 'Asuinpinta-ala:')
-		floor_and_max_floor_str = Scrap.getTableCellByHeader(deep_driver, 'Kerros:')
+			price = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Käyttövastike:')
+		layout = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Kuvaus:')
+		availability = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Vapautuminen:')
+		living_space_m2 = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Asuinpinta-ala:')
+		floor_and_max_floor_str = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Kerros:')
 		
 		floor = None
 		floor_max = None
@@ -164,14 +162,14 @@ def scrapeResultPage(driver, deep_driver, page_nr, listings):
 def getCosts(deep_driver):
 	costs = []
 	# TODO: Empty strings getting through?
-	water_cost_text = Scrap.getTableCellByHeader(deep_driver, 'Vesimaksu:')
+	water_cost_text = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Vesimaksu:')
 	if water_cost_text is not None:
 		water_cost = Cost(type = Cost.TYPE_WATER, description = 'Vesimaksu', amount_EUR = 0.0, period = Cost.PERIOD_UNDEFINED)
 		parseCostOccurrence(water_cost, water_cost_text)
 		costs.append(water_cost)
 	
 	# TODO: Empty strings getting through?
-	deposit_text = Scrap.getTableCellByHeader(deep_driver, 'Vakuus:')
+	deposit_text = Scrap.Scrap.getTableCellByHeader(deep_driver, 'Vakuus:')
 	if deposit_text is not None:
 		deposit = Cost(type = Cost.TYPE_DEPOSIT, description = 'Vuokravakuus', amount_EUR = 0.0, period = Cost.PERIOD_NON_REOCCURRING)
 		parseCostOccurrence(deposit, deposit_text) # period ignored

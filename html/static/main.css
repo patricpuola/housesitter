@@ -19,7 +19,7 @@
 }
 
 body{
-    background-color: #999;
+    background: linear-gradient(to bottom, #999 0%, #777 100%);
     font-family: Ubuntu;
     margin: 0;
     color: #444;
@@ -30,7 +30,8 @@ body{
     display: grid;
     margin: auto;
     min-width: 40em;
-    max-width: 50em;
+    max-width: 60em;
+    width: 100%;
     min-height: 100vh;
     grid-template-columns: 100%;
     grid-template-rows: 4em 2em max-content;

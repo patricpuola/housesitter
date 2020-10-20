@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 import re, pymysql, hashlib, uuid, mimetypes, pathlib, requests
-from db import DBCon
+import db
 import setup
-from pprint import pprint
 
 class Cost:
 	TYPE_UNDEFINED = 0
@@ -168,10 +167,10 @@ class Listing:
 		if self.id is not None:
 			self.sanitize()
 			if not self.validate():
-				with DBCon.get().cursor() as cursor:
+				with db.DBCon.get().cursor() as cursor:
 					cursor.execute("DELETE FROM listings WHERE id = {} LIMIT 1".format(self.id))
 				return False
-			with DBCon.get().cursor() as cursor:
+			with db.DBCon.get().cursor() as cursor:
 				cursor.execute("SHOW COLUMNS FROM listings")
 				table_columns = []
 				for column in cursor:
@@ -222,7 +221,7 @@ class Listing:
 					insert_values = tuple(insert_values)
 					cursor.execute(insert_sql, insert_values)
 		else:
-			with DBCon.get().cursor() as cursor:
+			with db.DBCon.get().cursor() as cursor:
 				cursor.execute("SELECT id FROM listings WHERE url = %s", self.url)
 				url_listing = cursor.fetchone()
 				if (url_listing is not None):
@@ -258,13 +257,13 @@ class Listing:
 		image_obj.close()
 
 		# Check if image hash found in database
-		with DBCon.get().cursor() as cursor:
+		with db.DBCon.get().cursor() as cursor:
 			cursor.execute("SELECT id FROM images WHERE hash_MD5 = %s LIMIT 1", (hash_MD5))
 			found = cursor.fetchone()
 			if found is not None:
 				return False
 
-		with DBCon.get().cursor() as cursor:
+		with db.DBCon.get().cursor() as cursor:
 			# Check if image uuid found in database
 			uuid_found = True
 			while uuid_found is not None:
@@ -276,7 +275,7 @@ class Listing:
 		image_file.write(image_data)
 		image_file.close()
 
-		with DBCon.get().cursor() as cursor:
+		with db.DBCon.get().cursor() as cursor:
 			cursor.execute("INSERT INTO images (listing_id, uuid, hash_MD5, extension, mime_type, original_filename, date_added) VALUES (%s, %s, %s, %s, %s, %s, NOW())", (self.id, image_id, hash_MD5, extension, mime_type, original_filename))
 
 		return True

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import setup
-from db import DBCon
+import db
 from opencage.geocoder import OpenCageGeocode
 from housing import Listing
 
@@ -37,7 +37,7 @@ class Geocode:
 
 	@classmethod
 	def getCache(cls, query):
-		with DBCon.get().cursor() as cursor:
+		with db.DBCon.get().cursor() as cursor:
 			cursor.execute("SELECT query, lat, lng, confidence, city, suburb, date_updated FROM geocodes WHERE query = %s LIMIT 1", (query))
 			result = cursor.fetchone()
 			if result is not None:
@@ -68,7 +68,7 @@ class Geocode:
 		if "town" in result["components"]:
 			geo["city"] = result["components"]["town"]
 
-		with DBCon.get().cursor() as cursor:
+		with db.DBCon.get().cursor() as cursor:
 			insert_columns = []
 			insert_placeholders = []
 			insert_values = []
@@ -86,7 +86,7 @@ class Geocode:
 
 	@classmethod
 	def checkListings(cls):
-		with DBCon.get().cursor() as cursor:
+		with db.DBCon.get().cursor() as cursor:
 			geocoding_preformed_int = int(Listing.GEOCODING_PREFORMED, 2)
 			cursor.execute("SELECT id, street_address, zip, city FROM listings WHERE flags & %s = 0", (geocoding_preformed_int,))
 			while (True):

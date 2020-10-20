@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import sys, os, time, math
-from pathlib import Path
 sys.path.insert(1, r'modules')
 flags = sys.argv
 
@@ -11,30 +10,27 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import WebDriverException
 '''
-from Scrap import Scrap
+import Scrap
 import vuokraovi_com
 import setup
-from housingsite import HousingSite
-from setup import getConfig as conf
-from setup import getCredentials as cred
-from pprint import pprint
+import housingsite
 
 if "setup" in flags:
 	setup.init()
 
-if not conf()['initial_setup_performed']:
+if not setup.getConfig()['initial_setup_performed']:
 	print("Run the initial setup first:\n"+" ".join(sys.argv)+" setup")
 	sys.exit()
 
-if conf()['opencage_enabled']:
+if setup.getConfig()['opencage_enabled']:
 	if setup.isModuleInstalled('opencage'):
 		from geocode import Geocode
 	else:
 		print("'opencage' geocoding not available, install it via pip3 to geocode addresses")
-		conf()['opencage_enabled'] = False
+		setup.getConfig()['opencage_enabled'] = False
 
 if "geocode" in flags:
-	if conf()['opencage_enabled']:
+	if setup.getConfig()['opencage_enabled']:
 		Geocode.checkListings()
 	else:
 		print("Geocoding is currently disabled")
@@ -45,18 +41,18 @@ if "empty" in flags:
 	sys.exit()
 
 if "expired" in flags:
-	Scrap.checkExpired()
+	Scrap.Scrap.checkExpired()
 	sys.exit()
 '''
-Scrap.setBrowser("chrome")
-main_driver = Scrap.getWebDriver(Scrap.BROWSER_LEFT)
-deep_driver = Scrap.getWebDriver(Scrap.BROWSER_RIGHT)
+Scrap.Scrap.setBrowser("chrome")
+main_driver = Scrap.Scrap.getWebDriver(Scrap.BROWSER_LEFT)
+deep_driver = Scrap.Scrap.getWebDriver(Scrap.BROWSER_RIGHT)
 
-Scrap.initWebdriverWindows()
+Scrap.Scrap.initWebdriverWindows()
 
 vuokraovi_com.getListings(main_driver, deep_driver)
 '''
 
-etuovi = HousingSite('etuovi.com', 'fi')
+etuovi = housingsite.HousingSite('etuovi.com', 'fi')
 etuovi.setSearchTerms('Helsinki')
 etuovi.start()

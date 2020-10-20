@@ -8,9 +8,9 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from housing import Cost, Listing
 import os, sys, time, atexit, re
-from multiprocessing import Process
+import multiprocessing
 import setup
-from db import DBCon
+import db
 
 
 class Scrap:
@@ -49,7 +49,7 @@ class Scrap:
 
 	@classmethod
 	def getWebDriver(cls, headless = False, side=BROWSER_LEFT):
-		#cls.checkExitFunction()
+		cls.checkExitFunction()
 		if cls.browser == 'chrome':
 			chrome_path = setup.getWebDriverPath(cls.browser)
 			chrome_options = cls.getChromeOptions(headless = headless)
@@ -202,7 +202,7 @@ class Scrap:
 	def checkExpired(cls, listing_id=None):
 		expired_int = int(Listing.EXPIRED, 2)
 		listings_to_check = []
-		with DBCon.get().cursor() as cursor:
+		with db.DBCon.get().cursor() as cursor:
 			#TODO: add option for checking a specific listing by id
 			cursor.execute(
 				"SELECT id, url, site FROM listings WHERE flags & %s = 0 LIMIT 20" % (expired_int,))
@@ -225,7 +225,7 @@ class Scrap:
 
 		# run headless
 		for node in lookup_nodes:
-			lookup_nodes[node]['process'] = Process(target=cls.lookupExpired, args=(lookup_nodes[node]['listings'],))
+			lookup_nodes[node]['process'] = multiprocessing.Process(target=cls.lookupExpired, args=(lookup_nodes[node]['listings'],))
 			lookup_nodes[node]['process'].start()
 
 		for node in lookup_nodes:
@@ -266,7 +266,7 @@ class Scrap:
 			lookup_xpath = cls.buildXpathSelector(cls.EXPIRY_LOOKUP_STRING[listing['site']])
 			try:
 				driver.find_element_by_xpath(lookup_xpath)
-				with DBCon.get().cursor() as cursor:
+				with db.DBCon.get().cursor() as cursor:
 					cursor.execute("UPDATE listings SET flags = flags | %s WHERE id = %s LIMIT 1", (expired_int, listing['id']))
 			except NoSuchElementException:
 				continue
