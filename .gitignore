@@ -4,4 +4,4 @@
 __pycache__/
 *.secure
 images/*
-.vscode/*
+.vscode
