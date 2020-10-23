@@ -18,6 +18,11 @@ class HousingSite:
 		4. Spawn deep_driver(s) and do the actual scraping
 			a) Grab images
 	'''
+	# Filtering size values
+	thumbnail_height_min = 80
+	thumbnail_height_max = 400
+	thumbnail_width_min = 100
+	thumbnail_width_max = 500
 
 	def __init__(self, site, language = "en"):
 		self.site = self.includeProtocol(site, False)
@@ -53,6 +58,16 @@ class HousingSite:
 			self.search_terms['field_search'] = kwargs
 		pass
 
+	def setThumbnailLimits(self, height_min = None, height_max = None, width_min = None, width_max = None):
+		if height_min is not None:
+			self.thumbnail_height_min = height_min
+		if height_min is not None:
+			self.thumbnail_height_min = height_max
+		if height_min is not None:
+			self.thumbnail_width_min = width_min
+		if height_min is not None:
+			self.thumbnail_width_max = width_max
+		
 	def start(self):
 		Scrap.Scrap.setBrowser("chrome")
 		self.main_driver = Scrap.Scrap.getWebDriver(Scrap.Scrap.BROWSER_LEFT)
@@ -65,10 +80,12 @@ class HousingSite:
 		Scrap.Scrap.waitUntilLoaded(self.main_driver)
 		if self.search_terms['free_search'] is not None:
 			self.inputSearchTerms()
-		if self.search():
-			Scrap.Scrap.waitUntilLoaded(self.main_driver)
-		print("done")
+		self.search()
+
+		item_conts = self.findResultPageItemContainers(self.main_driver)
+		print("done for now")
 		sys.exit()
+
 
 	def search(self):
 		search_xpath = Scrap.Scrap.buildXpathSelector(tags = ['button'])
@@ -79,9 +96,7 @@ class HousingSite:
 			return False
 
 		search_text = lang.Lang.get('search', self.language)
-		print("search_text: "+search_text)
 		for button in buttons:
-			print(button.text)
 			if re.search(r''+search_text, button.text.lower(), re.IGNORECASE):
 				return self.safeClick(self.main_driver, button)
 
@@ -181,7 +196,47 @@ class HousingSite:
 				return True
 			else:
 				return False
+	
+	def scroll(self, driver, dir = "down"):
+		before_y_offset = driver.execute_script('return window.scrollY')
+		if dir == "down":
+			driver.execute_script('window.scrollBy(0, window.innerHeight);')
+		elif dir == "up":
+			driver.execute_script('window.scrollBy(0, -window.innerHeight);')
+		elif dir == "reset":
+			driver.execute_script('window.scroll(0, 0);')
+		after_y_offset = driver.execute_script('return window.scrollY')
+		return before_y_offset != after_y_offset
+	
+	def findResultPageItemContainers(self, driver):
+		common_images = {}
+		images = []
+		
+		self.scroll(driver, "reset")
+		while True:
+			all_images = driver.find_elements(By.TAG_NAME, 'img')
+			for image in all_images:
+				if image in images:
+					continue
+				size = image.size
+				if self.thumbnail_height_min > size['height'] or size['height'] > self.thumbnail_height_max or self.thumbnail_width_min > size['width'] or size['width'] > self.thumbnail_width_max:					continue
+				images.append(image)
+				size_comb = str(size['width'])+'x'+str(size['height'])
+				location_x = str(image.location['x'])
+				image_di = size_comb+"_"+location_x
+				if image_di not in common_images:
+					common_images[image_di] = 0
+				common_images[image_di] += 1
+			if not self.scroll(driver, "down"):
+				break
+		
+		self.scroll(driver, "reset")
+		# Work in progress / find common ancestor between most common image size/x-coord
+		print(common_images)
+		print("Most common dimensions and location:")
+		common_di = max(common_images, key=common_images.get)
+		print(common_di)
 
-
+			
 	def findAndRemoveBlocker(self, blocking_element):
 		pass
