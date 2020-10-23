@@ -279,3 +279,11 @@ class Listing:
 			cursor.execute("INSERT INTO images (listing_id, uuid, hash_MD5, extension, mime_type, original_filename, date_added) VALUES (%s, %s, %s, %s, %s, %s, NOW())", (self.id, image_id, hash_MD5, extension, mime_type, original_filename))
 
 		return True
+	
+	@classmethod
+	def getHousingTypes(cls):
+		return {
+			'rental': cls.TYPE_OWN_RENTAL,
+			'ownership': cls.TYPE_OWN_OWNERSHIP,
+			'part_ownership': cls.TYPE_OWN_PART_OWNERSHIP
+		}

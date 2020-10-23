@@ -245,7 +245,8 @@ class Scrap:
 		timer = 0.0
 		while timer < timeout:
 			ready_state = driver.execute_script('return document.readyState')
-			if ready_state == 'complete':
+			jquery_done = driver.execute_script("return (window.jQuery != null) && (jQuery.active === 0);")
+			if ready_state == 'complete' and jquery_done:
 				return True
 			timer += step
 			time.sleep(step)

@@ -65,7 +65,10 @@ class HousingSite:
 		Scrap.Scrap.waitUntilLoaded(self.main_driver)
 		if self.search_terms['free_search'] is not None:
 			self.inputSearchTerms()
-		self.search()
+		if self.search():
+			Scrap.Scrap.waitUntilLoaded(self.main_driver)
+		print("done")
+		sys.exit()
 
 	def search(self):
 		search_xpath = Scrap.Scrap.buildXpathSelector(tags = ['button'])
@@ -75,13 +78,15 @@ class HousingSite:
 			print("Cannot find search button")
 			return False
 
+		search_text = lang.Lang.get('search', self.language)
+		print("search_text: "+search_text)
 		for button in buttons:
-			search_text = lang.Lang.get('search', self.language)
-			if re.search(r''+search_text, button.text.lower()):
-				self.safeClick(self.main_driver, button)
-			else:
-				print("Cannot find search button with text: "+search_text)
-				sys.exit()
+			print(button.text)
+			if re.search(r''+search_text, button.text.lower(), re.IGNORECASE):
+				return self.safeClick(self.main_driver, button)
+
+		print("Cannot find search button with text: "+search_text)
+		sys.exit()
 
 	def inputSearchTerms(self):
 		search_box = None
@@ -94,7 +99,6 @@ class HousingSite:
 		search_box = self.chooseSearchBox(text_inputs, 'location')
 		
 		search_box.send_keys(self.search_terms['free_search'])
-		pass
 
 	def chooseSearchBox(self, elements, keywords):
 		if len(elements) == 1:
@@ -140,14 +144,18 @@ class HousingSite:
 				button_texts.append(translated_text)
 			error = str(e)
 			match = re.search(r'Other element would receive the click: ([^\n]+)', error)
-			element = match.group(1)
-			el_id = self.extractAttribute(element, 'id')
-			el_classes = self.extractAttribute(element, 'class')
+			blocking_element = match.group(1)
+
+			el_id = self.extractAttribute(blocking_element, 'id')
+			el_classes = self.extractAttribute(blocking_element, 'class')
+
 			if el_id is not None:
-				element = driver.find_element_by_id(el_id)
+				blocker = driver.find_element_by_id(el_id)
 			elif el_classes is not None:
 				class_selector = '.'+re.sub(r'\s+', '.', el_classes.strip())
 				blocker = driver.find_element(By.CSS_SELECTOR, class_selector)
+
+			if blocker is not None:
 				blocking_parent = blocker.find_element(By.XPATH, '..')
 				while (True):
 					found_buttons = blocking_parent.find_elements(By.CSS_SELECTOR, 'button')
@@ -162,9 +170,17 @@ class HousingSite:
 						if closest_match is None or closest_match[1] > distance:
 							closest_match = (idx, distance)
 				element = found_buttons[closest_match[0]]
-			element.click()
-			time.sleep(2)
-			button.click()
+			else:
+				return False
+			
+			if element is not None:
+				element.click()
+				Scrap.Scrap.waitUntilLoaded(driver)
+				button.click()
+				Scrap.Scrap.waitUntilLoaded(driver)
+				return True
+			else:
+				return False
 
 
 	def findAndRemoveBlocker(self, blocking_element):

@@ -15,16 +15,31 @@
         cursor: pointer;
     }
 
+    #filter_cont{
+        display: inline-flex;
+    }
+
+    #filter_cont div{
+        margin:0.5em;
+    }
+
+    #filter_cont div:not(#filter_text) > a{
+        text-decoration: none;
+        color: orangered;
+    }
+
     {% for marker_variation in marker_variations %}
         .marker_intensity_{{ marker_variation[0] }}_{{ marker_variation[1] }}{
             background-image: url('/asset/map_marker/{{ marker_variation[0] }}/{{ marker_variation[1] }}');
         }
-
     {% endfor %}
 </style>
 {% endblock %}
 {% block content %}
 <h2>Map</h2>
+<div id="filter_cont">
+    <div id="filter_text">Filter:</div>{% for htype in housing_type_links %}<div class="housing_filter"><a href="{{htype.href}}">{{htype.text}}</a></div>{% endfor %}
+</div>
 <div id="dataset_analysis">
     <div id="price_min">{{ '{:.2f}'.format(dataset_analysis['price_min']) }}&euro;</div>
     <div id="price_title" class="scale_title"><img src="/asset/map_marker/50/101"> Price</div>
