@@ -5,6 +5,8 @@ import lang
 import Levenshtein
 import time
 import sys
+import functools
+import multiprocessing
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.common.by import By
 
@@ -72,17 +74,34 @@ class HousingSite:
 		Scrap.Scrap.setBrowser("chrome")
 		self.main_driver = Scrap.Scrap.getWebDriver(Scrap.Scrap.BROWSER_LEFT)
 		Scrap.Scrap.initWebdriverWindows(self.main_driver)
-		self.deep_nodes = {}
-		for i in range(0, setup.getConfig()['threads']):
-			self.deep_nodes['node_' +
-							str(i)] = {'process': None, 'listing_urls': []}
 		self.main_driver.get(self.site_url)
 		Scrap.Scrap.waitUntilLoaded(self.main_driver)
 		if self.search_terms['free_search'] is not None:
 			self.inputSearchTerms()
 		self.search()
 
-		item_conts = self.findResultPageItemContainers(self.main_driver)
+		self.findNavigationElements(self.main_driver)
+		self.findResultPageItemContainers(self.main_driver)
+
+		url_queue = multiprocessing.JoinableQueue()
+		self.deep_scrapers = [ DeepScraper(url_queue) for i in range(setup.getConfig()['threads']) ]	# Spawn workers
+
+		for ds in self.deep_scrapers:	# Start workers
+			ds.start()
+
+		while True:
+			deep_links = self.getDeepLinks(self.main_driver)
+			for url in deep_links:
+				url_queue.put(url)
+			if not self.nextPage(self.main_driver):
+				break
+			break	# debug
+		
+		for ds in self.deep_scrapers:	# Kill workers
+			url_queue.put(None)
+		
+		url_queue.join()
+
 		print("done for now")
 		sys.exit()
 
@@ -149,8 +168,11 @@ class HousingSite:
 			return None
 
 	def safeClick(self, driver, button):
+		driver.execute_script('arguments[0].scrollIntoView(true);', button)
 		try:
 			button.click()
+			Scrap.Scrap.waitUntilLoaded(driver)
+			return True
 		except ElementClickInterceptedException as e:
 			button_text_keys = ['accept', 'accept-all']
 			button_texts = []
@@ -231,12 +253,162 @@ class HousingSite:
 				break
 		
 		self.scroll(driver, "reset")
-		# Work in progress / find common ancestor between most common image size/x-coord
-		print(common_images)
-		print("Most common dimensions and location:")
-		common_di = max(common_images, key=common_images.get)
-		print(common_di)
 
-			
-	def findAndRemoveBlocker(self, blocking_element):
-		pass
+		common_di = max(common_images, key=common_images.get)
+		(thumbnail_width, thumbnail_height, x_offset) = re.split('[x_]', common_di)
+		thumbnail_width = int(thumbnail_width)
+		thumbnail_height = int(thumbnail_height)
+		x_offset = int(x_offset)
+
+		thumbnails = []
+		for image in images:
+			if image.size['height'] == thumbnail_height and image.size['width'] == thumbnail_width and image.location['x'] == x_offset:	# x_offset optional?
+				thumbnails.append(image)
+		
+		if (len(thumbnails) >= 2):
+			image_a = thumbnails[0]
+			image_b = thumbnails[1]
+			parent_a = image_a.find_element(By.XPATH, '..')
+			parent_b = image_b.find_element(By.XPATH, '..')
+			while parent_a != parent_b:	# Find common parent container
+				result_item_container = parent_a
+				parent_a = parent_a.find_element(By.XPATH, '..')
+				parent_b = parent_b.find_element(By.XPATH, '..')
+			result_container = parent_a
+		else:
+			print("Unable to determine result items' containers")
+			return False
+
+		self.result_container = {'tag': result_container.tag_name, 'classes': result_container.get_attribute('class').split(" ")}
+		self.result_item_container = {'tag': result_item_container.tag_name, 'classes': result_item_container.get_attribute('class').split(" ")}
+		return True
+
+	def getDeepLinks(self, driver):
+		if not hasattr(self, 'result_item_container'):
+			self.findResultPageItemContainers(driver)
+		result_container = driver.find_element(By.CSS_SELECTOR, self.result_container["tag"]+"."+".".join(self.result_container["classes"]))
+		items = result_container.find_elements(By.CSS_SELECTOR, self.result_item_container["tag"]+"."+".".join(self.result_item_container["classes"]))
+		links = []
+		for item in items:
+			a = item.find_element(By.TAG_NAME, 'a')
+			if a is not None:
+				links.append(a.get_attribute('href'))
+		return links
+	
+	def findNavigationElements(self, driver):
+		path_delimiter = '+'
+		def compare_elements(el1, el2):
+			if el1.tag_name != el2.tag_name:
+				return 0
+			similar_classes = list(set(el1.class_list) & set(el2.class_list))
+			return len(similar_classes)
+
+		def returnPathScores(base_path, base_element):
+			current_tier = len(base_path.split(path_delimiter))
+			paths = {}
+			for tier, key in enumerate(nav_button_groups):
+				if tier < current_tier:
+					continue
+				for idx, el in enumerate(nav_button_groups[key]):
+					score = compare_elements(base_element, el)
+					if score > 0:
+						new_path = base_path+"+"+str(idx)
+						paths[new_path] = score
+						if (tier+1 < len(nav_button_groups.keys())):	# check if next tier exists
+							paths = {**paths, **returnPathScores(new_path, base_element)}
+				break
+			return paths
+
+		nav_button_possible_tags = ['div','a','button','input']
+		search_for_navs = ['1','2','3']
+
+		nav_button_groups = {}
+		for nav_page in search_for_navs:
+			xpath = Scrap.Scrap.buildXpathSelector(nav_page, nav_button_possible_tags)
+			elements = driver.find_elements(By.XPATH, xpath)
+			if len(elements) > 0:
+				for el in elements:
+					digits = re.sub(r'\D', '', el.text)
+					if digits == nav_page:
+						el.class_list = el.get_attribute('class').split(" ")
+						if nav_page not in nav_button_groups:
+							nav_button_groups[nav_page] = []
+						nav_button_groups[nav_page].append(el)
+
+		if len(nav_button_groups) == 0:
+			print("Cannot find any likely navigation buttons")
+			return False
+
+		first_page = search_for_navs[0]
+		paths = {}
+		for idx, el in enumerate(nav_button_groups[first_page]):
+			path = str(idx)
+			paths = {**paths, **returnPathScores(path, el)}
+
+		candidate_list = []
+		for path, score in paths.items():
+			candidate_list.append({'path':path, 'score':score})
+		
+		sorted(candidate_list, key = lambda candidate: len(candidate['path']) + candidate['score'], reverse=True)	# path length + similiar classes = score
+		likely_group = candidate_list[0]
+
+		element_indices = likely_group['path'].split(path_delimiter)
+		element_indices = list(map(int, element_indices))
+		self.nav = {'tag': nav_button_groups[first_page][element_indices[0]].tag_name}
+		candidate_elements = []
+		for candidate_tier, el_idx in enumerate(element_indices):
+			for tier, key in enumerate(nav_button_groups):
+				if tier == candidate_tier:
+					candidate_elements.append(nav_button_groups[key][el_idx])
+					break
+		self.nav['classes'] = functools.reduce(set.intersection, list(map(lambda el: set(el.class_list), candidate_elements)))
+
+		return True
+
+	def getLastResultPage(self, driver):
+		if not hasattr(self, 'nav'):
+			self.findNavigationElements(driver)
+		class_selector = "."+".".join(self.nav['classes']) if len(self.nav['classes']) > 0 else ""
+		page_nav_buttons = driver.find_elements(By.CSS_SELECTOR, self.nav['tag']+class_selector)
+		if (len(page_nav_buttons) == 0):
+			print("Cannot find navigation buttons")
+			return False
+		last_el = page_nav_buttons[-1]
+		last_page = re.sub(r'\D', '', last_el.text)
+		return int(last_page)
+
+	def nextPage(self, driver):
+		if not hasattr(self, 'current_result_page'):
+			self.current_result_page = 1
+		if not hasattr(self, 'last_result_page'):
+			self.last_result_page = self.getLastResultPage(driver)
+
+		if self.current_result_page < self.last_result_page:
+			next_page = self.current_result_page + 1
+			class_selector = "."+".".join(self.nav['classes']) if len(self.nav['classes']) > 0 else ""
+			page_nav_buttons = driver.find_elements(By.CSS_SELECTOR, self.nav['tag']+class_selector)
+			for button in page_nav_buttons:
+				content = int(re.sub(r'\D', '', button.text))
+				if (content == next_page):
+					return self.safeClick(driver, button)
+		else:
+			return False
+
+class DeepScraper(multiprocessing.Process):
+	def __init__(self, url_queue):
+		multiprocessing.Process.__init__(self)
+		self.url_queue = url_queue
+		Scrap.Scrap.setBrowser("chrome")
+		self.driver = Scrap.Scrap.getWebDriver(headless = True)
+		Scrap.Scrap.initWebdriverWindows(self.driver)
+	
+	def run(self):
+		proc_name = self.name
+		while True:
+			url = self.url_queue.get()
+			if url is None:
+				self.url_queue.task_done()
+				break
+			self.url_queue.task_done()
+			time.sleep(0.2)
+		return
