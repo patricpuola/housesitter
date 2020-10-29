@@ -26,6 +26,8 @@ class HousingSite:
 	thumbnail_width_min = 100
 	thumbnail_width_max = 500
 
+	blockers = []
+
 	def __init__(self, site, language = "en"):
 		self.site = self.includeProtocol(site, False)
 		self.site_url = self.includeProtocol(site, True)
@@ -84,7 +86,7 @@ class HousingSite:
 		self.findResultPageItemContainers(self.main_driver)
 
 		url_queue = multiprocessing.JoinableQueue()
-		self.deep_scrapers = [ DeepScraper(url_queue) for i in range(setup.getConfig()['threads']) ]	# Spawn workers
+		self.deep_scrapers = [ DeepScraper(url_queue, self.language, self.blockers) for i in range(setup.getConfig()['threads']) ]	# Spawn workers
 
 		for ds in self.deep_scrapers:	# Start workers
 			ds.start()
@@ -98,16 +100,30 @@ class HousingSite:
 			break	# debug
 		
 		for ds in self.deep_scrapers:	# Kill workers
+			print("poison")
 			url_queue.put(None)
 		
+		print("wait for join")
 		url_queue.join()
-
 		print("done for now")
 		sys.exit()
 
+	@classmethod
+	def buildXpathSelector(cls, text = None, tags = None):
+		if text is not None:
+			if tags is None:
+				return """//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ', 'abcdefghijklmnopqrstuvwxyzåäö'), '{}')]""".format(text.lower())
+			else:
+				self_tags = list(map(lambda tag: "self::"+tag, tags))
+				return """//*[{}][contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ', 'abcdefghijklmnopqrstuvwxyzåäö'), '{}')]""".format(" or ".join(self_tags), text.lower())
+		elif tags is not None:
+			self_tags = list(map(lambda tag: "self::"+tag, tags))
+			return """//*[{}]""".format(" or ".join(self_tags))
+		else:
+			return False
 
 	def search(self):
-		search_xpath = Scrap.Scrap.buildXpathSelector(tags = ['button'])
+		search_xpath = self.buildXpathSelector(tags = ['button'])
 		try:
 			buttons = self.main_driver.find_elements_by_xpath(search_xpath)
 		except NoSuchElementException:
@@ -211,6 +227,9 @@ class HousingSite:
 				return False
 			
 			if element is not None:
+				blocker_tag = element.tag_name
+				blocker_classes = element.get_attribute('class').split(" ")
+				self.blockers.append({'tag': blocker_tag, 'classes': blocker_classes})
 				element.click()
 				Scrap.Scrap.waitUntilLoaded(driver)
 				button.click()
@@ -324,7 +343,7 @@ class HousingSite:
 
 		nav_button_groups = {}
 		for nav_page in search_for_navs:
-			xpath = Scrap.Scrap.buildXpathSelector(nav_page, nav_button_possible_tags)
+			xpath = self.buildXpathSelector(nav_page, nav_button_possible_tags)
 			elements = driver.find_elements(By.XPATH, xpath)
 			if len(elements) > 0:
 				for el in elements:
@@ -395,20 +414,98 @@ class HousingSite:
 			return False
 
 class DeepScraper(multiprocessing.Process):
-	def __init__(self, url_queue):
+	def __init__(self, url_queue, language, blockers):
 		multiprocessing.Process.__init__(self)
 		self.url_queue = url_queue
 		Scrap.Scrap.setBrowser("chrome")
-		self.driver = Scrap.Scrap.getWebDriver(headless = True)
-		Scrap.Scrap.initWebdriverWindows(self.driver)
+		self.driver = Scrap.Scrap.getWebDriver(headless = False)
+		Scrap.Scrap.initWebdriverWindows(self.driver, Scrap.Scrap.BROWSER_LEFT)
+		self.blockers = blockers
+		self.blockers_cleared = False
+		self.language = language
 	
 	def run(self):
 		proc_name = self.name
+		print("Start: "+proc_name)
+		keys = ['price','year','size']
+		translations = {}
+		for key in keys:
+			translations[key] = lang.Lang.get(key, self.language)
 		while True:
-			url = self.url_queue.get()
+			url = self.url_queue.get()	# Blocking
 			if url is None:
+				print("Exit: "+proc_name)
 				self.url_queue.task_done()
 				break
+			self.driver.get(url)
+			Scrap.Scrap.waitUntilLoaded(self.driver)
+			self.clearBlockers()
+			# Page loaded, start scraping
+			scraped_values = {}
+			for key, trans_val in translations.items():
+				print("key: %s Translated: %s" % (key, trans_val))
+				xpath = HousingSite.buildXpathSelector(trans_val)
+				elements = self.driver.find_elements(By.XPATH, xpath)
+				for el in elements:
+					print(el.tag_name)
+					print(el.text)
+				likely_element = min(elements, key=lambda el: Levenshtein.distance(el.text, trans_val))
+				print("likely candidate")
+				print(likely_element.tag_name)
+				print(likely_element.text)
+				following_element = self.getFollowingElement(likely_element)
+				scraped_values[key] = following_element.text
+			print(scraped_values)
+			# Data scraping done, check for images
+			self.getImages()
 			self.url_queue.task_done()
-			time.sleep(0.2)
 		return
+
+	def getImages(self):
+		image_link = None
+		pictures_trans = lang.Lang.get('pictures', self.language)
+		image_links = self.driver.find_elements(By.PARTIAL_LINK_TEXT, pictures_trans) 	#TODO: fix this
+		if len(image_links) == 0:
+			return None
+		elif len(image_links) == 1:
+			image_link = image_links[0].get_attribute('href')
+		else:
+			# TODO: proper scoring of links
+			image_link = image_links[0].get_attribute('href')
+		
+		if image_link is not None:
+			return False
+		self.driver.get(image_link)
+		Scrap.Scrap.waitUntilLoaded(self.driver)
+		anchors = self.driver.find_elements(By.TAG_NAME, 'a')
+		hrefs = []
+		for anchor in anchors:
+			try:
+				anchor.find_element(By.TAG_NAME, 'img')
+				hrefs.append(anchor.get_attribute('href'))
+			except NoSuchElementException:
+				pass
+		print(hrefs)
+		return
+
+	def getFollowingElement(self, element):
+		following_xpath = "following-sibling::*"
+		parent_xpath = ".."
+		try:
+			following_element = element.find_element(By.XPATH, following_xpath)
+		except NoSuchElementException:
+			parent = element.find_element(By.XPATH, parent_xpath)
+			following_element = self.getFollowingElement(parent)
+		return following_element
+	
+	def clearBlockers(self):
+		if self.blockers_cleared:
+			return True
+		for blocker in self.blockers:
+			class_selector = "."+".".join(blocker['classes']) if len(blocker['classes']) > 0 else ""
+			blocker = self.driver.find_elements(By.CSS_SELECTOR, blocker['tag']+class_selector)
+			if len(blocker) > 1:
+				print("More than one potential button found for blocker "+blocker['tag']+class_selector)
+			elif len(blocker) == 1:
+				blocker[0].click()
+				Scrap.Scrap.waitUntilLoaded(self.driver)

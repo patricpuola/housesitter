@@ -12,16 +12,16 @@ import multiprocessing
 import setup
 import db
 
-
 class Scrap:
 	VALID_BROWSERS = ["chrome", "firefox"]
 	browser = "chrome"
 
 	BROWSER_LEFT = 0
 	BROWSER_RIGHT = 1
+	BROWSER_FULL = 3
 
 	# In non-headless mode browsers are split to left and right on the desktop
-	active_webdrivers = {BROWSER_LEFT: [], BROWSER_RIGHT: []}
+	active_webdrivers = {BROWSER_LEFT: [], BROWSER_RIGHT: [], BROWSER_FULL: []}
 
 	available_width = 0
 	available_height = 0
@@ -76,6 +76,10 @@ class Scrap:
 					driver.set_window_rect(height=480, width=640, x=0, y=0)
 					if testing_driver is None:
 						testing_driver = driver
+				for driver in cls.active_webdrivers[cls.BROWSER_FULL]:
+					driver.set_window_rect(height=480, width=640, x=0, y=0)
+					if testing_driver is None:
+						testing_driver = driver
 			else:
 				single_driver.set_window_rect(height=480, width=640, x=0, y=0)
 				testing_driver = single_driver
@@ -96,12 +100,16 @@ class Scrap:
 						driver.set_window_rect(height=cls.available_height, width=cls.available_width/2, x=0, y=0)
 					for driver in cls.active_webdrivers[cls.BROWSER_RIGHT]:
 						driver.set_window_rect(height=cls.available_height, width=cls.available_width/2, x=cls.available_width, y=0)
+					for driver in cls.active_webdrivers[cls.BROWSER_FULL]:
+						driver.set_window_rect(height=cls.available_height, width=cls.available_width, x=0, y=0)
 					windows_set = True
 				else:
 					if single_side == cls.BROWSER_LEFT:
 						single_driver.set_window_rect(height=cls.available_height, width=cls.available_width/2, x=0, y=0)
-					else:
+					elif single_side == cls.BROWSER_RIGHT:
 						single_driver.set_window_rect(height=cls.available_height, width=cls.available_width/2, x=cls.available_width, y=0)
+					elif single_side == cls.BROWSER_FULL:
+						single_driver.set_window_rect(height=cls.available_height, width=cls.available_width, x=0, y=0)
 					windows_set = True
 			except WebDriverException:
 				time.sleep(0.1)
@@ -120,13 +128,15 @@ class Scrap:
 			driver.quit()
 		for driver in cls.active_webdrivers[cls.BROWSER_RIGHT]:
 			driver.quit()
+		for driver in cls.active_webdrivers[cls.BROWSER_FULL]:
+			driver.quit()
 		return
 
 	@classmethod
 	def buildXpathSelector(cls, text = None, tags = None):
 		if text is not None:
 			if tags is None:
-				return """//[contains(text(), '{}')]""".format(text.lower())
+				return """//*[contains(text(), '{}')]""".format(text.lower())
 			else:
 				self_tags = list(map(lambda tag: "self::"+tag, tags))
 				return """//*[{}][contains(text(), '{}')]""".format(" or ".join(self_tags), text.lower())
@@ -135,7 +145,6 @@ class Scrap:
 			return """//*[{}]""".format(" or ".join(self_tags))
 		else:
 			return False
-
 
 	# Method to try to find and remove blocking popups and ads (elementClickInterfenrenceException)
 	@classmethod

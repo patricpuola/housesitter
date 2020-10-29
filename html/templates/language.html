@@ -70,6 +70,7 @@
 					a.addEventListener('click', language_button);
 				}
 			};
+			
 			var post = new FormData();
 			post.append('key', key);
 			post.append('language', language);
@@ -87,7 +88,7 @@
 
 		document.getElementById("new_key_form").addEventListener("submit", function(e){
 			var key = document.getElementById("new_key").value;
-			window.location.href = "/language/mgmt/add_key/"+key;
+			window.location.href = "/language/mgmt/add_key/"+key; // Firefox doesn't go here
 		});
 
 		var delete_keys = document.getElementsByClassName('delete_key');
