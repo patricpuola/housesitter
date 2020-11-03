@@ -9,6 +9,9 @@ import functools
 import multiprocessing
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions
 
 class HousingSite:
 	'''
@@ -20,6 +23,7 @@ class HousingSite:
 		4. Spawn deep_driver(s) and do the actual scraping
 			a) Grab images
 	'''
+
 	# Filtering size values
 	thumbnail_height_min = 80
 	thumbnail_height_max = 400
@@ -27,6 +31,8 @@ class HousingSite:
 	thumbnail_width_max = 500
 
 	blockers = []
+
+	saved_scroll_pos = 0
 
 	def __init__(self, site, language = "en"):
 		self.site = self.includeProtocol(site, False)
@@ -38,6 +44,7 @@ class HousingSite:
 		lang.Lang.check(language)
 		self.language = language
 
+	@classmethod
 	def includeProtocol(self, site, include):
 		included = False
 		protocol = ""
@@ -132,8 +139,9 @@ class HousingSite:
 
 		search_text = lang.Lang.get('search', self.language)
 		for button in buttons:
-			if re.search(r''+search_text, button.text.lower(), re.IGNORECASE):
-				return self.safeClick(self.main_driver, button)
+			for stext in search_text:
+				if re.search(r''+stext, button.text.lower(), re.IGNORECASE):
+					return self.safeClick(self.main_driver, button)
 
 		print("Cannot find search button with text: "+search_text)
 		sys.exit()
@@ -193,7 +201,7 @@ class HousingSite:
 			button_text_keys = ['accept', 'accept-all']
 			button_texts = []
 			for text_key in button_text_keys:
-				translated_text = lang.Lang.get(text_key, self.language)
+				translated_text = lang.Lang.get(text_key, self.language)[0]	# not yet updated
 				button_texts.append(translated_text)
 			error = str(e)
 			match = re.search(r'Other element would receive the click: ([^\n]+)', error)
@@ -211,18 +219,23 @@ class HousingSite:
 			if blocker is not None:
 				blocking_parent = blocker.find_element(By.XPATH, '..')
 				while (True):
+					valid_buttons = []
 					found_buttons = blocking_parent.find_elements(By.CSS_SELECTOR, 'button')
 					if len(found_buttons) == 0:
 						blocking_parent = blocking_parent.find_element(By.XPATH, '..')	# move to parent
 					else:
-						break
+						for fbutton in found_buttons:
+							if self.isElementClickable(driver, fbutton, 1):
+								valid_buttons.append(fbutton)
+						if len(valid_buttons) > 0:
+							break
 				closest_match = None
-				for idx, found_button in enumerate(found_buttons):
+				for idx, valid_button in enumerate(valid_buttons):
 					for trn_text in button_texts:
-						distance = Levenshtein.distance(found_button.text, trn_text)
+						distance = Levenshtein.distance(valid_button.text, trn_text)
 						if closest_match is None or closest_match[1] > distance:
 							closest_match = (idx, distance)
-				element = found_buttons[closest_match[0]]
+				element = valid_buttons[closest_match[0]]
 			else:
 				return False
 			
@@ -238,6 +251,7 @@ class HousingSite:
 			else:
 				return False
 	
+	@classmethod
 	def scroll(self, driver, dir = "down"):
 		before_y_offset = driver.execute_script('return window.scrollY')
 		if dir == "down":
@@ -246,6 +260,10 @@ class HousingSite:
 			driver.execute_script('window.scrollBy(0, -window.innerHeight);')
 		elif dir == "reset":
 			driver.execute_script('window.scroll(0, 0);')
+		elif dir == "save":
+			self.saved_scroll_pos = driver.execute_script('return window.scrollY')
+		elif dir == "recall":
+			driver.execute_script('window.scroll(0, %s);' % (self.saved_scroll_pos,))
 		after_y_offset = driver.execute_script('return window.scrollY')
 		return before_y_offset != after_y_offset
 	
@@ -412,6 +430,49 @@ class HousingSite:
 					return self.safeClick(driver, button)
 		else:
 			return False
+	
+	@classmethod
+	def getElementXpath(self, driver, element):
+		jscript = """function getPathTo(node) {
+				var stack = [];
+				while(node.parentNode !== null) {
+					stack.unshift(node.tagName);
+					node = node.parentNode;
+				}
+				return stack.join('/');
+            }
+            return getPathTo(arguments[0]);"""
+		return driver.execute_script(jscript, element)
+
+	# TODO: check if element also needs to be visible
+	@classmethod
+	def isElementClickable(self, driver, element, timeout_seconds = 1):
+		self.scroll(driver, 'save')
+		driver.execute_script('arguments[0].scrollIntoView(true);', element)
+		xpath = self.getElementXpath(driver, element)
+		try:
+			WebDriverWait(driver, timeout_seconds).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
+		except TimeoutException:
+			self.scroll(driver, 'recall')
+			return False
+		self.scroll(driver, 'recall')
+		return True
+
+	@classmethod
+	def waitFor(cls, driver, element_tuples, timeout_seconds):
+		if type(element_tuples) == tuple:
+			element_tuples = [element_tuples]
+
+		wait_for_elements = []
+		for type_identifier in element_tuples:
+			wait_for_elements.append(
+				expected_conditions.presence_of_element_located(type_identifier))
+
+		try:
+			WebDriverWait(driver, timeout_seconds).until(*wait_for_elements)
+		except TimeoutException:
+			return False
+		return True
 
 class DeepScraper(multiprocessing.Process):
 	def __init__(self, url_queue, language, blockers):
@@ -430,7 +491,7 @@ class DeepScraper(multiprocessing.Process):
 		keys = ['price','year','size']
 		translations = {}
 		for key in keys:
-			translations[key] = lang.Lang.get(key, self.language)
+			translations[key] = lang.Lang.get(key, self.language)[0]
 		while True:
 			url = self.url_queue.get()	# Blocking
 			if url is None:
@@ -463,16 +524,35 @@ class DeepScraper(multiprocessing.Process):
 
 	def getImages(self):
 		image_link = None
-		pictures_trans = lang.Lang.get('pictures', self.language)
-		image_links = self.driver.find_elements(By.PARTIAL_LINK_TEXT, pictures_trans) 	#TODO: fix this
-		if len(image_links) == 0:
-			return None
-		elif len(image_links) == 1:
-			image_link = image_links[0].get_attribute('href')
-		else:
-			# TODO: proper scoring of links
-			image_link = image_links[0].get_attribute('href')
+		images_translations = lang.Lang.get('images', self.language)
+		tags = []
 		
+		HousingSite.scroll(self.driver, 'reset')
+		while True:
+			for image_text in images_translations:
+				xpath = HousingSite.buildXpathSelector(image_text)
+				new_tags = self.driver.find_elements(By.XPATH, xpath)
+				for tag in new_tags:
+					if tag not in tags:
+						tags.append(tag)
+			if not HousingSite.scroll(self.driver, 'down'):
+				break
+		HousingSite.scroll(self.driver, 'reset')
+		
+		# TODO: get anchor of found elements ! ! !
+		
+		if len(tags) == 0:
+			return None
+		elif len(tags) == 1:
+			image_link = tags[0].get_attribute('href')
+		else:
+			for tag in tags:
+				if HousingSite.isElementClickable(self.driver, tag, 2):
+					image_link = tag.get_attribute('href')
+					break
+			# TODO: proper scoring of links
+
+		print(image_link)		
 		if image_link is not None:
 			return False
 		self.driver.get(image_link)

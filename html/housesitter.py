@@ -8,6 +8,8 @@ import db
 import lang
 import setup
 import housing
+import time
+import json
 
 app = flask.Flask(__name__)
 
@@ -220,13 +222,11 @@ def language_mgmt(action=None, value=None):
 		else:
 			return "This language column already exists"
 	elif action == 'set_translation':   # ajax
-		key = flask.request.form.get("key")
-		language = flask.request.form.get("language")
-		value = flask.request.form.get("value")
-		if (lang.Lang.set(key, value, language)):
-			return "OK"
+		data = flask.request.get_json()
+		if (lang.Lang.set(data['key'], data['values'], data['language'])):
+			return json.dumps({"response":"OK"})
 		else:
-			return "ERROR"
+			return json.dumps({"response":"ERROR"})
 	elif action == 'add_key' and value is not None:
 		key = value
 		lang.Lang.addKey(key)
@@ -234,6 +234,10 @@ def language_mgmt(action=None, value=None):
 	elif action == 'delete_key' and value is not None:
 		key = value
 		lang.Lang.deleteKey(key)
+		return flask.redirect(flask.url_for('language'), 303)
+	elif action == 'delete_language' and value is not None:
+		language = value
+		lang.Lang.deleteLanguage(language)
 		return flask.redirect(flask.url_for('language'), 303)
 
 @app.route('/image/<int:id>')
@@ -299,6 +303,31 @@ def asset(intensity = None, dot_intensity = None):
 	png = io.BytesIO()
 	cairosvg.svg2png(bytestring=asset_data, write_to=png)
 	return flask.Response(response=png.getvalue(), headers={'Content-type':'image/png'}, mimetype='image/png')
+
+@app.route('/migrate')
+def migrate():
+	with db.DBCon.get().cursor() as cursor:
+		cursor.execute("SELECT distinct(`key`) as 'key' from languages WHERE `key` is not null")
+		rows = cursor.fetchall()
+		keys = []
+		for row in rows:
+			keys.append(row['key'])
+		cursor.execute("SELECT distinct(language) as language from languages WHERE language is not null")
+		rows = cursor.fetchall()
+		languages = []
+		for row in rows:
+			languages.append(row['language'])
+		list = []
+		for key in keys:
+			for language in languages:
+				obj = {'key':key, 'language': language, 'values':[]}
+				cursor.execute("SELECT value FROM languages WHERE `key` = '%s' AND language = '%s' LIMIT 1" % (key, language))
+				row = cursor.fetchone()
+				if row['value'] is not None:
+					value = row['value']
+					obj['values'].append(value)
+					list.append(obj)
+	return "yay"
 
 if __name__ == '__main__':
 	app.debug = True

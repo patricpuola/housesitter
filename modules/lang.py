@@ -3,83 +3,67 @@ import iso639
 
 class Lang:
 	@classmethod
-	def get(cls, key, lang):
-		cls.check(lang)
-		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("SELECT value FROM languages WHERE language = '%s' AND `key` = '%s' LIMIT 1" % (lang,key))
-			row = cursor.fetchone()
-		if row is not None:
-			return row['value']
+	def get(cls, key, language):
+		cls.check(language)
+		translation = db.MongoCon.get()['languages'].find_one({'key':key, 'language':language})
+		if translation is not None:
+			return translation['values']
 		else:
 			return None
 
 	@classmethod
-	def set(cls, key, value, lang):
-		cls.check(lang)
-		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("SELECT id, value FROM languages WHERE `key` = '%s' AND language = '%s' LIMIT 1" % (key, lang))
-			old = cursor.fetchone()
-			if old is not None:
-				if old['value'] != value:
-					cursor.execute("UPDATE languages SET value = '%s' WHERE id = %d" % (value, old['id']))
-			else:
-				cursor.execute("INSERT INTO languages (`key`, language, value) VALUES ('%s', '%s', '%s')" % (key, lang, value))
+	def set(cls, key, values, language):
+		cls.check(language)
+		translation = db.MongoCon.get()['languages'].find_one({'key': key, 'language': language})
+		if translation is None:
+			db.MongoCon.get()['languages'].insert_one({'key':key, 'language':language, 'values':[]})
+		query = {"key":key, "language":language}
+		update = {"$set": {"values": values}}
+		db.MongoCon.get()['languages'].update_one(query, update)
 		return True
 
 	@classmethod
 	def addKey(cls, key):
-		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("SELECT 1 FROM languages WHERE `key` = '%s' AND language IS NULL" % (key,))
-			found = cursor.fetchone()
-			if (found is not None):
-				return False
-			else:
-				cursor.execute("INSERT INTO languages (`key`, language, value) VALUES ('%s', NULL, NULL)" % (key,))
-				return True
+		get_key = db.MongoCon.get()['languages'].find_one({'key': key, 'language': None})
+		if get_key is not None:
+			return False
+		db.MongoCon.get()['languages'].insert_one({'key': key, 'language': None, 'values': None})
+		return True
 
 	@classmethod
 	def deleteKey(cls, key):
-		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("DELETE FROM languages WHERE `key` = '%s'" % (key,))
-			return True
+		query = {'key': key}
+		delete = db.MongoCon.get()['languages'].delete_many(query)
+		return delete.deleted_count
 
 	@classmethod
 	def addLanguage(cls, language):
-		with db.DBCon.get().cursor() as cursor:
-			print("checking language")
-			cursor.execute("SELECT 1 FROM languages WHERE language = '%s' LIMIT 1" % (language,))
-			print("execute 1")
-			if cursor.fetchone() is not None:
-				return False
-			print("check passed")
-			cursor.execute("INSERT INTO languages (`key`, language, value) VALUES (NULL, '%s', NULL)" % (language,))
-			print("language added")
-			return True
+		cls.check(language)
+		get_language = db.MongoCon.get()['languages'].find_one({'key': None, 'language': language})
+		if get_language is not None:
+			return False
+		db.MongoCon.get()['languages'].insert_one({'key': None, 'language': language, 'values': None})
+		return True
+	
+	@classmethod
+	def deleteLanguage(cls, language):
+		cls.check(language)
+		query = {'language': language}
+		delete = db.MongoCon.get()['languages'].delete_many(query)
+		return delete.deleted_count
 	
 	@classmethod
 	def getLanguages(cls):
-		languages = []
-		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("SELECT language FROM languages WHERE `key` IS NULL AND value IS NULL")
-			row = cursor.fetchone()
-			while row is not None:
-				languages.append(row['language'])
-				row = cursor.fetchone()
-		return languages
-			
+		return db.MongoCon.get()['languages'].distinct("language", {"language": {"$ne": None}})
 
 	@classmethod
 	def getAll(cls):
 		translations = {}
-		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("SELECT `key` FROM languages WHERE language IS NULL")
-			keys = cursor.fetchall()
-			for row in keys:
-				key = row['key']
-				translations[key] = {}
-				cursor.execute("SELECT language, value FROM languages WHERE `key` = '%s'" % (key,))
-				for row in cursor:
-					translations[key][row['language']] = row['value']
+		for item in db.MongoCon.get()['languages'].find({'$and':[{'key':{'$ne':None}}, {'language':{'$ne':None}}]}):
+			if item['key'] not in translations:
+				translations[item['key']] = {}
+			if item['language'] not in translations[item['key']]:
+				translations[item['key']][item['language']] = item['values']
 		return translations
 
 	@classmethod

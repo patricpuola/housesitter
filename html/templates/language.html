@@ -6,34 +6,70 @@
 		{% for abbr in lang_abbr %}'{{abbr}}'{% if not loop.last %},{% endif %}{% endfor %}
 	];
 
-	function language_button(){
+	function language_button(event){
+		let focus = null;
+		let clicked_translation = null;
+		if (event.originalTarget.classList.contains('translation')){
+			clicked_translation = event.originalTarget.innerText;
+		}
 		key = this.getAttribute('data-key');
 		language = this.getAttribute('data-language');
+
+		old_values = [];
+		old_translations = this.getElementsByClassName('translation');
+		for (var i = 0; i < old_translations.length; i++){
+			old_values.push(old_translations[i].innerText);
+		}
+
 		var cont = document.createElement('form');
 		cont.classList.add('edit_form');
-		var new_translation = document.createElement('input');
-		new_translation.setAttribute('type', 'text');
-		if (this.classList.contains('modify_translation')){
-			new_translation.value = this.innerHTML;
+		
+		translation_inputs = [];
+		for (var i = 0; i <= old_values.length; i++){
+			translation_inputs[i] = document.createElement('input');
+			translation_inputs[i].classList.add('new_value');
+			translation_inputs[i].setAttribute('type', 'text');
+			if (i != old_values.length){
+				translation_inputs[i].value = old_values[i];
+				if (clicked_translation == old_values[i]){
+					focus = i;
+				}
+			}
 		}
+
 		var cancel = document.createElement('input');
 		cancel.setAttribute('type', 'button');
 		cancel.value = "Cancel";
 		if (this.classList.contains("modify_translation")){
 			cancel.setAttribute('data-key', this.getAttribute('data-key'));
 			cancel.setAttribute('data-language', this.getAttribute('data-language'));
-			cancel.setAttribute('data-old-value', this.innerHTML);
+			cancel.setAttribute('data-old-value', this.innerHTML);	// fix later
 		}
 		cancel.id = "cancel-"+key;
 		var submit = document.createElement('input');
-		submit.setAttribute('type', 'button');
+		submit.setAttribute('type', 'submit');
 		submit.value = "Submit";
-		cont.appendChild(new_translation);
+		for (var i = 0; i < translation_inputs.length; i++){
+			cont.appendChild(translation_inputs[i]);
+		}
+		add_input = document.createElement('button');
+		add_input.classList.add('add_translation_input');
+		add_input.setAttribute('type', 'button');
+		add_input.innerHTML = "<i class=\"fas fa-plus\"></i>";
+		add_input.addEventListener('click', function(){
+			new_value_input = document.createElement('input');
+			new_value_input.setAttribute('type', 'text');
+			new_value_input.classList.add('new_value');
+			cont.insertBefore(new_value_input, this);
+		});
+		cont.appendChild(add_input);
 		cont.appendChild(submit);
 		cont.appendChild(cancel);
 		var parent = this.parentNode;
 		parent.replaceChild(cont, this);
-		new_translation.focus();
+		if (focus !== null){
+			translation_inputs[focus].focus();
+		}
 
 		document.getElementById('cancel-'+key).addEventListener('click', function(e){
 			while (child = parent.firstChild) parent.removeChild(child);
@@ -56,37 +92,66 @@
 		});
 
 		submit.addEventListener('click', function(e){
-			value = this.parentNode.firstChild.value;
-			var xhttp = new XMLHttpRequest();
-			xhttp.onreadystatechange = function() {
-				if (this.readyState == 4 && this.status == 200 && this.responseText == "OK") {
+			e.preventDefault();
+			var new_value_inputs = this.parentNode.getElementsByClassName('new_value');
+			var new_value_elements = [];
+			var new_values = [];
+			for (var i = 0; i < new_value_inputs.length; i++){
+				if (new_value_inputs[i].value.length > 0){
+					let div = document.createElement('div');
+					div.classList.add('translation');
+					div.innerText = new_value_inputs[i].value;
+					new_value_elements.push(div);
+					new_values.push(new_value_inputs[i].value);
+				}
+			}
+
+			var post = {};
+			post.key = key;
+			post.language = language;
+			post.values = new_values;
+			let post_json = JSON.stringify(post);
+			fetch("/language/mgmt/set_translation",{
+				credentials: "same-origin",
+				mode: "same-origin",
+				method: "post",
+				headers: { "Content-Type": "application/json"},
+				body: post_json
+			}).then(resp => {
+				if (resp.status === 200){
+					return resp.json();
+				}else{
+					console.log("Request failed");
+					return Promise.reject("Server");
+				}
+			}).then(data => {
+				if (data.response == "OK"){
 					while (child = parent.firstChild) parent.removeChild(child);
 					var a = document.createElement('a');
 					a.classList.add('modify_translation');
 					a.setAttribute('data-key', key);
 					a.setAttribute('data-language', language);
-					a.innerHTML = value;
+					for (var i = 0; i < new_value_elements.length; i++){
+						a.appendChild(new_value_elements[i]);
+					}
 					parent.appendChild(a);
 					a.addEventListener('click', language_button);
+				}else{
+					console.log(data);
 				}
-			};
-			
-			var post = new FormData();
-			post.append('key', key);
-			post.append('language', language);
-			post.append('value', value);
-			xhttp.open("POST", "/language/mgmt/set_translation", true);
-			xhttp.send(post);
+			});
 		});
 	}
 
 	document.addEventListener("DOMContentLoaded", function(e) { 
 		document.getElementById("new_lang_form").addEventListener("submit", function(e){
+			e.preventDefault();
 			var add_lang = document.getElementById("new_lang_select").value;
 			window.location.href = "/language/mgmt/add_lang/"+add_lang;
 		});
 
 		document.getElementById("new_key_form").addEventListener("submit", function(e){
+			e.preventDefault();
 			var key = document.getElementById("new_key").value;
 			window.location.href = "/language/mgmt/add_key/"+key; // Firefox doesn't go here
 		});
@@ -104,6 +169,16 @@
 		btns = document.querySelectorAll(".add_translation,.modify_translation");
 		for (var i = 0; i < btns.length; i++){
 			btns[i].addEventListener("click", language_button);
+		}
+
+		var delete_languages = document.getElementsByClassName('delete_language');
+		for (var i = 0; i < delete_languages.length; i++){
+			delete_languages[i].addEventListener("click", function(e){
+				language = this.getAttribute('data-language');
+				if (confirm("Are you sure you want to delete language "+language+"?")){
+					window.location.href = "/language/mgmt/delete_language/"+language;
+				}
+			});
 		}
 	});
 </script>
@@ -126,6 +201,7 @@
 	.header{
 		font-weight: bold;
 		border-bottom: 0.01em solid grey;
+		line-height: 1.5em;
 	}
 
 	.add{
@@ -137,7 +213,7 @@
 		cursor: pointer;
 	}
 
-	.modify_translation:hover{
+	.translation:hover{
 		font-weight: bold;
 	}
 
@@ -150,6 +226,27 @@
 
 	.edit_form input[type="button"]{
 		margin: 0.5em 0.5em 0em 0.5em;
+	}
+	
+	.lang_key{
+		line-height: 1.5em;
+	}
+
+	.header:hover .delete_language, .lang_key:hover .delete_key{
+		display: initial;
+	}
+
+	.delete_language, .delete_key{
+		margin-left: 0.5em;
+		display: none;
+		height: 1.5em;
+		width: 1.5em;
+		padding:0;
+	}
+
+	.add_translation_input{
+		display: block;
+		margin: 0.25em auto auto auto;
 	}
 </style>
 <h2>Translations</h2>
@@ -170,9 +267,12 @@
 	</form>
 </div>
 <div id="lang_cont">
-	<div class="header">Key</div>{% for lang in translated_languages %}<div class="header">{{ lang }}</div>{% endfor %}
+	<div class="header">Key</div>{% for lang in translated_languages %}<div class="header">{{ lang }}<button class="delete_language" data-language="{{ lang }}"><i class="fas fa-trash-alt"></i></button></div>{% endfor %}
 	{% for key in translations %}
-		<div>{{ key }} <button class="delete_key" data-key="{{ key }}">-</button></div>{% for lang in translated_languages %}<div>{% if lang not in translations[key] %}<button class="add_translation" data-key="{{ key }}" data-language="{{ lang }}">+</button>{% else %}<a class="modify_translation" data-key="{{ key }}" data-language="{{ lang }}">{{ translations[key][lang] }}</a>{% endif %}</div>{% endfor %}
+		<div class="lang_key">{{ key }}<button class="delete_key" data-key="{{ key }}"><i class="fas fa-trash-alt"></i></button></div>
+		{% for lang in translated_languages %}<div>{% if lang not in translations[key] %}<button class="add_translation" data-key="{{ key }}" data-language="{{ lang }}">+</button>
+			{% else %}<a class="modify_translation" data-key="{{ key }}" data-language="{{ lang }}">{% for value in translations[key][lang] %}<div class="translation">{{ value }}</div>{% endfor %}</a>
+			{% endif %}</div>{% endfor %}
 	{% endfor %}
 </div>
 {% endblock %}

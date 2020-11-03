@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 import sys
 import pymysql
+import pymongo
 import setup
 
-class DBCon:
+class DBCon:	# MariaDB
 	USER_ACCESS_DENIED = 1698
 	DB_ACCESS_DENIED = 1044
 
@@ -54,3 +55,24 @@ class DBCon:
 				return cls.get(cls.attempt, user=user, password=password, db=db, persistent=persistent, cursor_type=cls.cursor_type_in_use)
 			else:
 				return False
+
+class MongoCon:
+	client = None
+
+	@classmethod
+	def get(cls):
+		if cls.client is None:
+			cls.connect()
+		else:
+			try:
+				cls.client.server_info()
+			except pymongo.errors.ServerSelectionTimeoutError:
+				cls.connect()
+		return cls.client['housesitter']
+
+	@classmethod
+	def connect(cls):
+		try:
+			cls.client = pymongo.MongoClient(host="localhost", port=27017)
+		except pymongo.errors.ServerSelectionTimeoutError as err:
+			print(err)

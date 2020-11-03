@@ -5,11 +5,7 @@ flags = sys.argv
 
 os.popen('pkill chromedriver')
 os.popen('pkill chrome')
-'''
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import WebDriverException
-'''
+
 import Scrap
 import vuokraovi_com
 import setup
