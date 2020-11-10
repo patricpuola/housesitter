@@ -7,6 +7,7 @@ import time
 import sys
 import functools
 import multiprocessing
+import housing
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
@@ -29,6 +30,9 @@ class HousingSite:
 	thumbnail_height_max = 400
 	thumbnail_width_min = 100
 	thumbnail_width_max = 500
+
+	gallery_height_min = 300
+	gallery_width_min = 400
 
 	blockers = []
 
@@ -93,7 +97,7 @@ class HousingSite:
 		self.findResultPageItemContainers(self.main_driver)
 
 		url_queue = multiprocessing.JoinableQueue()
-		self.deep_scrapers = [ DeepScraper(url_queue, self.language, self.blockers) for i in range(setup.getConfig()['threads']) ]	# Spawn workers
+		self.deep_scrapers = [ DeepScraper(self.site_url, url_queue, self.language, self.blockers) for i in range(setup.getConfig()['threads']) ]	# Spawn workers
 
 		for ds in self.deep_scrapers:	# Start workers
 			ds.start()
@@ -179,10 +183,6 @@ class HousingSite:
 					candidates[idx] += class_match_value
 		winner = candidates.index(max(candidates))
 		return elements[winner]
-
-	def scrape(self, listing_urls):
-		driver = Scrap.Scrap.getWebDriver(Scrap.Scrap.BROWSER_RIGHT)
-		Scrap.Scrap.initWebdriverWindows(driver)
 
 	def extractAttribute(self, element_str, attribute):
 		match = re.search(r''+attribute+'=[\'"]([^\'"]+)[\'"]', element_str, re.IGNORECASE)
@@ -475,8 +475,9 @@ class HousingSite:
 		return True
 
 class DeepScraper(multiprocessing.Process):
-	def __init__(self, url_queue, language, blockers):
+	def __init__(self, site, url_queue, language, blockers):
 		multiprocessing.Process.__init__(self)
+		self.site = site
 		self.url_queue = url_queue
 		Scrap.Scrap.setBrowser("chrome")
 		self.driver = Scrap.Scrap.getWebDriver(headless = False)
@@ -484,6 +485,7 @@ class DeepScraper(multiprocessing.Process):
 		self.blockers = blockers
 		self.blockers_cleared = False
 		self.language = language
+		self.active_listing = None
 	
 	def run(self):
 		proc_name = self.name
@@ -502,6 +504,7 @@ class DeepScraper(multiprocessing.Process):
 			Scrap.Scrap.waitUntilLoaded(self.driver)
 			self.clearBlockers()
 			# Page loaded, start scraping
+			self.active_listing = housing.Listing(self.site, url)
 			scraped_values = {}
 			for key, trans_val in translations.items():
 				print("key: %s Translated: %s" % (key, trans_val))
@@ -523,7 +526,7 @@ class DeepScraper(multiprocessing.Process):
 		return
 
 	def getImages(self):
-		image_link = None
+		gallery_link = None
 		images_translations = lang.Lang.get('images', self.language)
 		tags = []
 		
@@ -539,33 +542,57 @@ class DeepScraper(multiprocessing.Process):
 				break
 		HousingSite.scroll(self.driver, 'reset')
 		
-		# TODO: get anchor of found elements ! ! !
-		
+		max_traversal = 3
+
 		if len(tags) == 0:
 			return None
 		elif len(tags) == 1:
-			image_link = tags[0].get_attribute('href')
-		else:
-			for tag in tags:
-				if HousingSite.isElementClickable(self.driver, tag, 2):
-					image_link = tag.get_attribute('href')
+			traversal = 0
+			tag = tags[0]
+			gallery_link = tag.get_attribute('href')
+			while gallery_link is None and traversal < max_traversal:
+				traversal += 1
+				tag = tag.find_element(By.XPATH, '..')
+				if (tag.tag_name == 'a' and tag.get_attribute('href') is not None):
+					gallery_link = tag.get_attribute('href')
 					break
+		else:
+			gallery_links = []
+			for tag in tags:
+				traversal = 0
+				gallery_link = tag.get_attribute('href')
+				while gallery_link is None and traversal < max_traversal:
+					traversal += 1
+					tag = tag.find_element(By.XPATH, '..')
+					href = tag.get_attribute('href')
+					if (tag.tag_name == 'a' and href is not None and href not in gallery_links):
+						gallery_links.append(href)
+						break
 			# TODO: proper scoring of links
+			gallery_link = gallery_links[0]
 
-		print(image_link)		
-		if image_link is not None:
+		if gallery_link is None:
 			return False
-		self.driver.get(image_link)
+		self.driver.get(gallery_link)
 		Scrap.Scrap.waitUntilLoaded(self.driver)
 		anchors = self.driver.find_elements(By.TAG_NAME, 'a')
 		hrefs = []
-		for anchor in anchors:
-			try:
-				anchor.find_element(By.TAG_NAME, 'img')
-				hrefs.append(anchor.get_attribute('href'))
-			except NoSuchElementException:
-				pass
-		print(hrefs)
+		if len(anchors) > 0:
+			for anchor in anchors:
+				try:
+					anchor.find_element(By.TAG_NAME, 'img')
+					hrefs.append(anchor.get_attribute('href'))
+				except NoSuchElementException:
+					pass
+		else:
+			imgs = self.driver.find_elements(By.TAG_NAME, 'img')
+			for img in imgs:
+				if img.size['height'] > HousingSite.gallery_height_min and img.size['width'] > HousingSite.gallery_width_min:
+					src = img.get_attribute('src')
+					if src is not None:
+						hrefs.append(src)
+		for url in hrefs:
+			self.active_listing.addImage(url)
 		return
 
 	def getFollowingElement(self, element):

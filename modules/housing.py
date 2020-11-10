@@ -232,7 +232,7 @@ class Listing:
 		return True
 	
 	def validate(self):
-		required_fields = ['street_address','zip','city','price']
+		required_fields = ['street_address', 'zip', 'city', 'price']
 		missing_fields = []
 		for field in required_fields:
 			if getattr(self,field) is None:

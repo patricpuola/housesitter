@@ -106,11 +106,11 @@ def getListingMarkers():
 	return markers
 
 def getMapStartingPoint():
-	starting_point = {'lng':None, 'lat':None, 'zoom': 9}
+	starting_point = {'lng':0, 'lat':0, 'zoom': 0}
 	with db.DBCon.get().cursor() as cursor:
 		cursor.execute("SELECT MIN(lng) as lng_min, MAX(lng) as lng_max, MIN(lat) as lat_min, MAX(lat) as lat_max FROM geocodes")
 		map_values = cursor.fetchone()
-	if map_values:
+	if map_values["lng_min"] is not None and map_values["lng_max"] is not None and map_values["lat_min"] is not None and map_values["lat_max"] is not None:
 		starting_point['lng'] = (map_values['lng_min'] + map_values['lng_max']) / 2
 		starting_point['lat'] = (map_values['lat_min'] + map_values['lat_max']) / 2
 		lng_range = map_values['lng_max'] - map_values['lng_min']
@@ -125,10 +125,10 @@ def appendAnalysis(listings, dataset_analysis = {}):
 		dataset_analysis['price_min'] = 0
 		dataset_analysis['price_max'] = 0
 		return
-	price_per_m2_min = None
-	price_per_m2_max = None
-	price_max = None
-	price_min = None
+	price_per_m2_min = 0
+	price_per_m2_max = 0
+	price_max = 0
+	price_min = 0
 	for listing in listings:
 		listing['analysis'] = {}
 		if not isinstance(listing['price'], float):
@@ -201,6 +201,8 @@ def listings(detail=None):
 			image_ids = getImageIds(listing['id'])
 			for image_id in image_ids:
 				listing['images'].append({'url':'/image/'+str(image_id), 'id':image_id})
+			listing['price'] = 0.0 if len(listing['price']) == 0 else listing['price']
+			listing['living_space_m2'] = 0 if len(listing['living_space_m2']) == 0 else listing['living_space_m2']
 		   
 	return flask.render_template('listings.html', nav=getNavLinks(), listings=listings, detail=detail)
 
@@ -306,6 +308,7 @@ def asset(intensity = None, dot_intensity = None):
 
 @app.route('/migrate')
 def migrate():
+	# remove this after all migrating done from mysql to mongodb
 	with db.DBCon.get().cursor() as cursor:
 		cursor.execute("SELECT distinct(`key`) as 'key' from languages WHERE `key` is not null")
 		rows = cursor.fetchall()
