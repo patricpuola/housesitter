@@ -59,10 +59,10 @@ class Lang:
 	@classmethod
 	def getAll(cls):
 		translations = {}
-		for item in db.MongoCon.get()['languages'].find({'$and':[{'key':{'$ne':None}}, {'language':{'$ne':None}}]}):
+		for item in db.MongoCon.get()['languages'].find({'key':{'$ne':None}}):
 			if item['key'] not in translations:
 				translations[item['key']] = {}
-			if item['language'] not in translations[item['key']]:
+			if item['language'] is not None and item['language'] not in translations[item['key']]:
 				translations[item['key']][item['language']] = item['values']
 		return translations
 

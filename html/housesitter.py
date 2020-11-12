@@ -201,7 +201,7 @@ def listings(detail=None):
 			image_ids = getImageIds(listing['id'])
 			for image_id in image_ids:
 				listing['images'].append({'url':'/image/'+str(image_id), 'id':image_id})
-			listing['price'] = 0.0 if len(listing['price']) == 0 else listing['price']
+			listing['price'] = 0.0 if len(str(listing['price'])) == 0 else listing['price']
 			listing['living_space_m2'] = 0 if len(listing['living_space_m2']) == 0 else listing['living_space_m2']
 		   
 	return flask.render_template('listings.html', nav=getNavLinks(), listings=listings, detail=detail)
@@ -331,6 +331,12 @@ def migrate():
 					obj['values'].append(value)
 					list.append(obj)
 	return "yay"
+
+@app.route('/test')
+def test():
+	for x in db.MongoCon.get()['languages'].find():
+		print(x)
+	return "hello world"
 
 if __name__ == '__main__':
 	app.debug = True

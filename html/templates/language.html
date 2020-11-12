@@ -144,13 +144,13 @@
 	}
 
 	document.addEventListener("DOMContentLoaded", function(e) { 
-		document.getElementById("new_lang_form").addEventListener("submit", function(e){
+		document.getElementById("add_lang_column").addEventListener("click", function(e){
 			e.preventDefault();
 			var add_lang = document.getElementById("new_lang_select").value;
 			window.location.href = "/language/mgmt/add_lang/"+add_lang;
 		});
 
-		document.getElementById("new_key_form").addEventListener("submit", function(e){
+		document.getElementById("add_key").addEventListener("click", function(e){
 			e.preventDefault();
 			var key = document.getElementById("new_key").value;
 			window.location.href = "/language/mgmt/add_key/"+key; // Firefox doesn't go here
@@ -256,14 +256,14 @@
 	<select id="new_lang_select">
 		{% for abbr in lang_abbr %}<option value="{{ abbr }}"{% if abbr == "en" %} selected{% endif %}>{{ abbr }}</option>{% endfor %}
 	</select>
-	<input type="submit" id="add_lang_column" value="Add">
+	<input type="button" id="add_lang_column" value="Add">
 	</form>
 </div>
 <div class="add">
 	<form id="new_key_form">
 	<span>Add a Key</span>
 	<input id="new_key" type="text" required>
-	<input type="submit" id="add_key" value="Add">
+	<input type="button" id="add_key" value="Add">
 	</form>
 </div>
 <div id="lang_cont">

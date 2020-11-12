@@ -109,11 +109,11 @@ class Listing:
 
 		self.save()
 
-	def fill(self, ownership_type = None, housing_type = None, street_address = None, zip = None, suburb = None, city = None, country = None, price = None, agency = None, description = None, living_space_m2 = None, layout = None, total_space_m2 = None, availability = None, build_year = None, floor = None, floor_count = None, floor_max = None, additional_info = None, condition = None, flags = None, date_added = None):
-		fill_data = locals()
-		for key in fill_data:
-			if fill_data[key] is not None and key != 'self':
-				setattr(self, key, fill_data[key])
+	def fill(self, **kwargs):
+		#ownership_type = None, housing_type = None, street_address = None, zip = None, suburb = None, city = None, country = None, price = None, agency = None, description = None, living_space_m2 = None, layout = None, total_space_m2 = None, availability = None, build_year = None, floor = None, floor_count = None, floor_max = None, additional_info = None, condition = None, flags = None, date_added = None
+		for key, value in kwargs.items():
+			if value is not None and key != 'self' and hasattr(self, key):
+				setattr(self, key, value)
 
 	def sanitize(self):
 		#sanitize all attributes
@@ -232,19 +232,20 @@ class Listing:
 		return True
 	
 	def validate(self):
-		required_fields = ['street_address', 'zip', 'city', 'price']
+		required_fields = []
+		#required_fields = ['street_address', 'zip', 'city', 'price']
 		missing_fields = []
 		for field in required_fields:
 			if getattr(self,field) is None:
 				missing_fields.append(field)
 		if len(missing_fields) > 0:
-			print("Housing has missing fields:\nid: {}".format(self.id)+"\nURL: {}".format(self.url)+"Fields: "+", ".join(missing_fields))
+			print("Housing has missing fields:\nid: {}".format(self.id)+"\nURL: {}".format(self.url)+"\nFields: "+", ".join(missing_fields))
 			return False
 		return True
 
 	def addImage(self, image_url):
 		head_check = requests.head(image_url)
-		if not head_check.ok or not re.match('image', head_check.headers['Content-Type']):
+		if not head_check.ok or 'Content-Type' not in head_check.headers or not re.match('image', head_check.headers['Content-Type']):
 			return False
 		extension = pathlib.Path(image_url).suffix
 		mime_types = mimetypes.guess_type(image_url)

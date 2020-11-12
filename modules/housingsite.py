@@ -490,10 +490,10 @@ class DeepScraper(multiprocessing.Process):
 	def run(self):
 		proc_name = self.name
 		print("Start: "+proc_name)
-		keys = ['price','year','size']
+		keys = ['location', 'build-year', 'floor', 'living-space', 'total-space', 'availability', 'condition', 'layout', 'price']
 		translations = {}
 		for key in keys:
-			translations[key] = lang.Lang.get(key, self.language)[0]
+			translations[key] = lang.Lang.get(key, self.language)
 		while True:
 			url = self.url_queue.get()	# Blocking
 			if url is None:
@@ -506,22 +506,45 @@ class DeepScraper(multiprocessing.Process):
 			# Page loaded, start scraping
 			self.active_listing = housing.Listing(self.site, url)
 			scraped_values = {}
-			for key, trans_val in translations.items():
-				print("key: %s Translated: %s" % (key, trans_val))
-				xpath = HousingSite.buildXpathSelector(trans_val)
-				elements = self.driver.find_elements(By.XPATH, xpath)
-				for el in elements:
-					print(el.tag_name)
-					print(el.text)
-				likely_element = min(elements, key=lambda el: Levenshtein.distance(el.text, trans_val))
-				print("likely candidate")
-				print(likely_element.tag_name)
-				print(likely_element.text)
-				following_element = self.getFollowingElement(likely_element)
-				scraped_values[key] = following_element.text
+			for key, trans_vals in translations.items():
+				for trans_val in trans_vals:
+					xpath = HousingSite.buildXpathSelector(trans_val)
+					elements = self.driver.find_elements(By.XPATH, xpath)
+					if len(elements) == 0:
+						continue
+					#for el in elements:
+					#	print(el.tag_name)
+					#	print(el.text)
+					likely_element = min(elements, key=lambda el: Levenshtein.distance(el.text, trans_val))
+					#print("likely candidate")
+					#print(likely_element.tag_name)
+					#print(likely_element.text)
+					following_element = self.getFollowingElement(likely_element)
+					element_text = following_element.text 	# text returns text nodes of all descendants, no need to drill down
+					if element_text == "":
+						continue
+					scraped_values[key] = element_text
+					break
+			# Data scraping done, refine
+			if 'floor' in scraped_values:
+				floor_data = scraped_values['floor']
+				scraped_values['floor'] = None
+				scraped_values['floor_max'] = None
+				floor_regex = re.search(r'(\d+)/(\d+)', floor_data)
+				if floor_regex is not None:
+					scraped_values['floor'] = floor_regex.group(1)
+					scraped_values['floor_max'] = floor_regex.group(2)
+				else:
+					floor_regex = re.search(r'^(\d+)$', floor_data.strip())
+					if floor_regex is not None:
+						scraped_values['floor'] = floor_regex.group(1)
+					else:
+						print("INVALID FLOOR DATA: "+floor_data)
 			print(scraped_values)
-			# Data scraping done, check for images
-			self.getImages()
+			self.active_listing.fill(**scraped_values)
+			self.active_listing.save()
+			# Check for images
+			#self.getImages()
 			self.url_queue.task_done()
 		return
 
