@@ -11,7 +11,7 @@ required_packages = ['mariadb-server', 'wget']
 optional_packages = []
 
 installed_modules = []
-required_modules = ['selenium', 'pymysql', 'beautifulsoup4', 'iso639', 'pymongo']
+required_modules = ['selenium', 'pymysql', 'beautifulsoup4', 'iso639', 'pymongo', 'regex']
 optional_modules = ['opencage']
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent

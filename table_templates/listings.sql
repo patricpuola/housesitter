@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `listings` (
   `living_space_m2` float(10),
   `layout` varchar(100),
   `total_space_m2` float(10),
-  `availability` varchar(50),
+  `availability` varchar(150),
   `build_year` int(4),
   `floor` int,
   `floor_count` int,

@@ -1,5 +1,6 @@
 import Scrap
 import re
+import regex
 import setup
 import lang
 import Levenshtein
@@ -508,23 +509,25 @@ class DeepScraper(multiprocessing.Process):
 			scraped_values = {}
 			for key, trans_vals in translations.items():
 				for trans_val in trans_vals:
+					print("Searching for %s" % (trans_val,))
 					xpath = HousingSite.buildXpathSelector(trans_val)
 					elements = self.driver.find_elements(By.XPATH, xpath)
 					if len(elements) == 0:
+						print('nothing found')
 						continue
-					#for el in elements:
-					#	print(el.tag_name)
-					#	print(el.text)
-					likely_element = min(elements, key=lambda el: Levenshtein.distance(el.text, trans_val))
-					#print("likely candidate")
-					#print(likely_element.tag_name)
-					#print(likely_element.text)
-					following_element = self.getFollowingElement(likely_element)
-					element_text = following_element.text 	# text returns text nodes of all descendants, no need to drill down
-					if element_text == "":
-						continue
-					scraped_values[key] = element_text
-					break
+					elements.sort(key=lambda el: Levenshtein.distance(el.text, trans_val))
+					for likely_element in elements:
+						following_element = self.getFollowingElement(likely_element)
+						element_text = following_element.text 	# text returns text nodes of all descendants, no need to drill down
+						if element_text == "" or not Validator.check(key, element_text):
+							continue
+						scraped_values[key] = element_text
+						print("Found value: %s" % (element_text,))
+						break
+					if key not in scraped_values:
+						continue	# try next translation variation
+					else:
+						break
 			# Data scraping done, refine
 			if 'floor' in scraped_values:
 				floor_data = scraped_values['floor']
@@ -540,11 +543,34 @@ class DeepScraper(multiprocessing.Process):
 						scraped_values['floor'] = floor_regex.group(1)
 					else:
 						print("INVALID FLOOR DATA: "+floor_data)
+			if 'location' in scraped_values:
+				zip = None
+				location_rows = scraped_values['location'].splitlines()
+				extra_location_data = ""
+				for lrow in location_rows:
+					if Validator.check('zip', lrow):
+						zip_found = regex.search(r'\d{4,}', lrow)
+						if zip_found is not None:
+							zip = zip_found.group()
+							lrow = lrow.replace(zip, '')
+							scraped_values['zip'] = zip
+							address_parts = lrow.split(',')
+							if len(address_parts) == 1:
+								scraped_values['city'] = address_parts[0].strip()
+							else:
+								scraped_values['street_address'] = address_parts[0].strip()
+								scraped_values['city'] = address_parts[1].strip()
+					else:
+						extra_location_data += lrow
+				
+				if 'street_address' not in scraped_values and 'city' in scraped_values and zip in scraped_values and extra_location_data != '':
+					scraped_values['street_address'] = extra_location_data	# best guess
+
 			print(scraped_values)
 			self.active_listing.fill(**scraped_values)
 			self.active_listing.save()
 			# Check for images
-			#self.getImages()
+			self.getImages()
 			self.url_queue.task_done()
 		return
 
@@ -639,3 +665,64 @@ class DeepScraper(multiprocessing.Process):
 			elif len(blocker) == 1:
 				blocker[0].click()
 				Scrap.Scrap.waitUntilLoaded(self.driver)
+
+class Validator:
+	class ValueCheck:
+		def __init__(self, valid_regex, sanity_regex):
+			self.valid_regex = valid_regex
+			self.sanity_regex = sanity_regex
+		
+		def valid(self, value):
+			return regex.search(self.valid_regex, value) is not None
+		
+		def sanity(self, value):
+			return regex.search(self.sanity_regex, value) is not None
+	
+	ANY = r'.+'
+	ANY_ALPHANUMERIC = r'\w+'
+	ANY_LETTERS = r'\p{L}{2,}'
+	ANY_NUMBERS = r'\d+'
+
+	values = {
+		'street_address': ValueCheck(ANY_LETTERS, ANY),
+		'zip': ValueCheck(ANY_NUMBERS, r'\d{3,}'),
+		'city': ValueCheck(ANY_LETTERS, ANY),
+		'price': ValueCheck(ANY_NUMBERS, ANY),
+		'country': ValueCheck(ANY_LETTERS, ANY),
+		'description': ValueCheck(ANY_LETTERS, ANY),
+		'living-space': ValueCheck(ANY_NUMBERS, ANY),
+		'layout': ValueCheck(ANY_LETTERS, ANY),
+		'total-space': ValueCheck(ANY_NUMBERS, ANY),
+		'availability': ValueCheck(ANY_LETTERS, ANY),
+		'build-year': ValueCheck(ANY_NUMBERS, ANY),
+		'floor': ValueCheck(ANY_NUMBERS, ANY),
+		'condition': ValueCheck(ANY_ALPHANUMERIC, ANY)
+	}
+
+	@classmethod
+	def check(cls, key, value):
+		return cls.checkValidity(key, value) and cls.checkSanity(key, value)
+	
+	@classmethod
+	def checkValidity(cls, key, value):
+		if key not in cls.values:
+			print('Invalid key in validity check: %s' % (key,))
+			return True
+		result = cls.values[key].valid(value)
+		if (result is False):
+			print("Sanity check failed for key [%s] and value: [%s]" % (key, value))
+		return result
+	
+	@classmethod
+	def checkSanity(cls, key, value):
+		if key not in cls.values:
+			print('Invalid key in sanity check: %s' % (key,))
+			return True
+		result = cls.values[key].sanity(value)
+		if (result is False):
+			print("Sanity check failed for key [%s] and value: [%s]" % (key, value))
+		return result
+	
+	@classmethod
+	def override(cls, key, valid_regex = ANY, sanity_regex = ANY):
+		cls.values[key] = cls.ValueCheck(valid_regex, sanity_regex)
