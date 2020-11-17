@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import re, pymysql, hashlib, uuid, mimetypes, pathlib, requests
+import re, pymysql, hashlib, uuid, mimetypes, pathlib, requests, regex
 import db
 import setup
 
@@ -222,13 +222,24 @@ class Listing:
 					cursor.execute(insert_sql, insert_values)
 		else:
 			with db.DBCon.get().cursor() as cursor:
-				cursor.execute("SELECT id FROM listings WHERE url = %s", self.url)
+				url_search = "SELECT id FROM listings WHERE url = '%s' LIMIT 1" % (self.url,)
+				cursor.execute(url_search)
 				url_listing = cursor.fetchone()
-				if (url_listing is not None):
+				if url_listing is not None:
 					self.id = url_listing["id"]
-				else:
-					cursor.execute("INSERT INTO listings (site, url, date_updated) VALUES (%s, %s, NOW())", (self.site, self.url))
-					self.id = cursor.lastrowid
+					return True
+
+				if regex.search(r'\?', self.url) is not None:	# Strip GET variables and search again
+					stripped_url_wildcard = regex.sub('\?.*$', '', self.url)+'%'
+					if regex.search(r'\d{3,}', stripped_url_wildcard) is not None:	# Basic number check to avoid looping base URL
+						cursor.execute("SELECT id FROM listings WHERE url LIKE '%s'" % (stripped_url_wildcard,))
+						results = cursor.fetchall()
+						if (len(results) == 1):
+							self.id = results[0]['id']
+							return True
+
+				cursor.execute("INSERT INTO listings (site, url, date_updated) VALUES ('%s', '%s', NOW())" % (self.site, self.url))
+				self.id = cursor.lastrowid
 		return True
 	
 	def validate(self):
@@ -259,7 +270,7 @@ class Listing:
 
 		# Check if image hash found in database
 		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("SELECT id FROM images WHERE hash_MD5 = %s LIMIT 1", (hash_MD5))
+			cursor.execute("SELECT id FROM images WHERE hash_MD5 = '%s' LIMIT 1", (hash_MD5))
 			found = cursor.fetchone()
 			if found is not None:
 				return False

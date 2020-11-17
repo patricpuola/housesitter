@@ -9,7 +9,8 @@ import sys
 import functools
 import multiprocessing
 import housing
-from selenium.common.exceptions import NoSuchElementException, WebDriverException, ElementClickInterceptedException
+import db
+from selenium.common.exceptions import NoSuchElementException, WebDriverException, ElementClickInterceptedException, InvalidSelectorException
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
@@ -491,7 +492,7 @@ class DeepScraper(multiprocessing.Process):
 	def run(self):
 		proc_name = self.name
 		print("Start: "+proc_name)
-		keys = ['location', 'build-year', 'floor', 'living-space', 'total-space', 'availability', 'condition', 'layout', 'price']
+		keys = ['location', 'build-year', 'floor', 'living-space', 'total-space', 'availability', 'condition', 'layout', 'price', 'housing-type']
 		translations = {}
 		for key in keys:
 			translations[key] = lang.Lang.get(key, self.language)
@@ -533,12 +534,12 @@ class DeepScraper(multiprocessing.Process):
 				floor_data = scraped_values['floor']
 				scraped_values['floor'] = None
 				scraped_values['floor_max'] = None
-				floor_regex = re.search(r'(\d+)/(\d+)', floor_data)
+				floor_regex = regex.search(r'(\d+)/(\d+)', floor_data)
 				if floor_regex is not None:
 					scraped_values['floor'] = floor_regex.group(1)
 					scraped_values['floor_max'] = floor_regex.group(2)
 				else:
-					floor_regex = re.search(r'^(\d+)$', floor_data.strip())
+					floor_regex = regex.search(r'^(\d+)$', floor_data.strip())
 					if floor_regex is not None:
 						scraped_values['floor'] = floor_regex.group(1)
 					else:
@@ -565,6 +566,12 @@ class DeepScraper(multiprocessing.Process):
 				
 				if 'street_address' not in scraped_values and 'city' in scraped_values and zip in scraped_values and extra_location_data != '':
 					scraped_values['street_address'] = extra_location_data	# best guess
+			if 'living-space' in scraped_values:
+				scraped_values['living_space_m2'] = scraped_values['living-space']
+			if 'total-space' in scraped_values:
+				scraped_values['total_space_m2'] = scraped_values['total-space']
+			if 'housing-type' in scraped_values:
+				scraped_values['housing_type'] = scraped_values['housing-type']
 
 			print(scraped_values)
 			self.active_listing.fill(**scraped_values)
@@ -612,7 +619,10 @@ class DeepScraper(multiprocessing.Process):
 				gallery_link = tag.get_attribute('href')
 				while gallery_link is None and traversal < max_traversal:
 					traversal += 1
-					tag = tag.find_element(By.XPATH, '..')
+					try:
+						tag = tag.find_element(By.XPATH, '..')
+					except InvalidSelectorException:
+						continue
 					href = tag.get_attribute('href')
 					if (tag.tag_name == 'a' and href is not None and href not in gallery_links):
 						gallery_links.append(href)
@@ -696,7 +706,8 @@ class Validator:
 		'availability': ValueCheck(ANY_LETTERS, ANY),
 		'build-year': ValueCheck(ANY_NUMBERS, ANY),
 		'floor': ValueCheck(ANY_NUMBERS, ANY),
-		'condition': ValueCheck(ANY_ALPHANUMERIC, ANY)
+		'condition': ValueCheck(ANY_ALPHANUMERIC, ANY),
+		'housing-type': ValueCheck(ANY_LETTERS, ANY)
 	}
 
 	@classmethod

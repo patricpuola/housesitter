@@ -28,12 +28,12 @@
                     </div>
                 </div>
                 <div class="detail_1">
-                    <div class="type_size">{{ listing.housing_type}}, {{ listing.living_space_m2 }}m²</div>
+                    <div class="type_size">{{ listing.housing_type}} {{ listing.living_space_m2 }}m²</div>
                     <div class="layout">{{ listing.layout }}</div>
                     <div class="price">{{ '{:.2f}'.format(listing.price) }} &euro;</div>
                 </div>
                 <div class="detail_2">
-                    <div class="address_1">{{ listing.city }}, {{ listing.suburb }}</div>
+                    <div class="address_1">{{ listing.city }}{% if listing.suburb != "" %}, {{ listing.suburb }}{% endif %}</div>
                     <div class="address_2">{{ listing.street_address }}</div>
                     <div class="build_year">{{ listing.build_year }}</div>
                     <div class="url"><a href="{{listing.url}}">Link</a></div>

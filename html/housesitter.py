@@ -10,6 +10,7 @@ import setup
 import housing
 import time
 import json
+import shutil
 
 app = flask.Flask(__name__)
 
@@ -84,6 +85,12 @@ def getStats():
 		stats.append(cursor.fetchone())
 		cursor.execute("SELECT 'Geocodes' as `stat`, count(id) as `value` FROM geocodes")
 		stats.append(cursor.fetchone())
+	
+	total, used, free = shutil.disk_usage("/")
+	stats.append({'stat':'Total', 'value':"%d GiB" % (total // (2**30))})
+	stats.append({'stat':'Used', 'value':"%d GiB" % (used // (2**30))})
+	stats.append({'stat':'Free', 'value':"%d GiB" % (free // (2**30))})
+
 	return stats
 
 def getZoom(lng_range, lat_range):
@@ -188,6 +195,7 @@ def getRGB(value):
 
 @app.route('/')
 def index():
+	print(getStats())
 	return flask.render_template('index.html', nav=getNavLinks(), stats=getStats())
 
 @app.route('/listings')
@@ -202,7 +210,7 @@ def listings(detail=None):
 			for image_id in image_ids:
 				listing['images'].append({'url':'/image/'+str(image_id), 'id':image_id})
 			listing['price'] = 0.0 if len(str(listing['price'])) == 0 else listing['price']
-			listing['living_space_m2'] = 0 if len(listing['living_space_m2']) == 0 else listing['living_space_m2']
+			listing['living_space_m2'] = 0 if len(str(listing['living_space_m2'])) == 0 else listing['living_space_m2']
 		   
 	return flask.render_template('listings.html', nav=getNavLinks(), listings=listings, detail=detail)
 
