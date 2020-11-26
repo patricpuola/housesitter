@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS `listings` (
   `floor_max` int,
   `additional_info` text,
   `condition` varchar(50),
+  `lat` DOUBLE DEFAULT 0,
+  `lng` DOUBLE DEFAULT 0,
 	`flags` bit(8) NOT NULL DEFAULT 0,
   `date_added` timestamp NOT NULL DEFAULT "0000-00-00 00:00:00",
   `date_updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP()

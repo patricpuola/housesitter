@@ -11,7 +11,7 @@ import housing
 import time
 import json
 import shutil
-
+import regex
 app = flask.Flask(__name__)
 
 def getNavLinks():
@@ -26,32 +26,19 @@ def getListings(housing_type = None, count = 20, offset = 0, getCoordinates = Fa
 	listings = []
 	with db.DBCon.get().cursor() as cursor:
 		if housing_type is not None:
-			cursor.execute("SELECT id, url, site, ownership_type, housing_type, description, street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year, flags FROM listings WHERE ownership_type = %d ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (housing_type, count, offset))
+			cursor.execute("SELECT id, url, site, ownership_type, housing_type, description, street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year, lat, lng, flags FROM listings WHERE ownership_type = %d ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (housing_type, count, offset))
 		else:
-			cursor.execute("SELECT id, url, site, ownership_type, housing_type, description, street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year, flags FROM listings ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (count, offset))
-		with db.DBCon.get().cursor() as geo_cursor:
-			while True:
-				listing = cursor.fetchone()
-				if listing == None:
-					break
-				if listing['layout'] is not None:
-					listing['layout'] = listing['layout'].replace('+',' + ')
-				for prop in listing:
-					if listing[prop] == None:
-						listing[prop] = ""
-				listing["lng"] = None
-				listing["lat"] = None
-				if getCoordinates is True:
-					if listing['street_address'] is not None and listing['zip'] is not None or listing['city'] is not None:
-						full_address = listing["street_address"]+", "+str(listing["zip"])+" "+listing["city"]
-						full_address = db.DBCon.get().escape_string(full_address)
-						geo_cursor.execute("SELECT lat, lng FROM geocodes WHERE query = '{}' LIMIT 1".format(full_address))
-						coords = geo_cursor.fetchone()
-						if coords is not None:
-							listing["lng"] = coords['lng']
-							listing["lat"] = coords['lat']
-				listing['expired'] = listing['flags'] & int(housing.Listing.EXPIRED, 2) > 0
-				listings.append(listing)
+			cursor.execute("SELECT id, url, site, ownership_type, housing_type, description, street_address, zip, city, suburb, price, country, agency, layout, living_space_m2, total_space_m2, build_year, lat, lng, flags FROM listings ORDER BY date_updated DESC LIMIT %d OFFSET %d" % (count, offset))		
+		
+		while True:
+			listing = cursor.fetchone()
+			if listing == None:
+				break
+			for prop in listing:
+				if listing[prop] == None:
+					listing[prop] = ""
+			listing['expired'] = listing['flags'] & int(housing.Listing.EXPIRED, 2) > 0
+			listings.append(listing)
 	return listings
 
 def getImageIds(listing_id: int, limit = None):
@@ -83,7 +70,7 @@ def getStats():
 		stats.append(cursor.fetchone())
 		cursor.execute("SELECT 'Images' as `stat`, count(id) as `value` FROM images")
 		stats.append(cursor.fetchone())
-		cursor.execute("SELECT 'Geocodes' as `stat`, count(id) as `value` FROM geocodes")
+		cursor.execute("SELECT 'Geocodes' as `stat`, count(id) as `value` FROM listings WHERE lat IS NOT NULL AND lng IS NOT NULL")
 		stats.append(cursor.fetchone())
 	
 	total, used, free = shutil.disk_usage("/")
@@ -138,7 +125,7 @@ def appendAnalysis(listings, dataset_analysis = {}):
 	price_min = 0
 	for listing in listings:
 		listing['analysis'] = {}
-		if not isinstance(listing['price'], float):
+		if not isinstance(listing['price'], float) or not isinstance(listing['living_space_m2'], int):
 			continue
 		listing['analysis']['price_per_m2'] = listing['price'] / listing['living_space_m2']
 		if price_per_m2_min is None or listing['analysis']['price_per_m2'] < price_per_m2_min:
@@ -195,7 +182,6 @@ def getRGB(value):
 
 @app.route('/')
 def index():
-	print(getStats())
 	return flask.render_template('index.html', nav=getNavLinks(), stats=getStats())
 
 @app.route('/listings')
@@ -271,7 +257,7 @@ def map(housing_type = None):
 	housing_filter = None
 	if housing_type in housing_types:
 		housing_filter = housing_types[housing_type]
-	listings = getListings(housing_filter, 200, 0, True)
+	listings = getListings(housing_filter, 20, 0, True)
 	dataset_analysis = {}
 	appendAnalysis(listings, dataset_analysis)
 	for listing in listings:
@@ -282,12 +268,12 @@ def map(housing_type = None):
 		if 'price_per_m2_dataset_relational' in listing['analysis']:
 			listing['analysis']['marker_dot_intensity'] = int(round(listing['analysis']['price_per_m2_dataset_relational']*100,2))
 		else:
-			listing['analysis']['marker_dot_intensity'] = None
+			listing['analysis']['marker_dot_intensity'] = None #TODO: fix
 		
 		if 'price_dataset_relational' in listing['analysis']:
 			listing['analysis']['marker_intensity'] = int(round(listing['analysis']['price_dataset_relational']*100,2))
 		else:
-			listing['analysis']['marker_intensity'] = None
+			listing['analysis']['marker_intensity'] = None #TODO: fix
 		
 		if listing['analysis']['marker_intensity'] is not None and listing['analysis']['marker_dot_intensity'] is not None:
 			marker_variation = (listing['analysis']['marker_intensity'],listing['analysis']['marker_dot_intensity'])

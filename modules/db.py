@@ -3,6 +3,7 @@ import sys
 import pymysql
 import pymongo
 import setup
+import os
 
 class DBCon:	# MariaDB
 	USER_ACCESS_DENIED = 1698
@@ -57,22 +58,25 @@ class DBCon:	# MariaDB
 				return False
 
 class MongoCon:
-	client = None
+	clients = {}	# Process-id dependent connection management
 
 	@classmethod
 	def get(cls):
-		if cls.client is None:
-			cls.connect()
+		pid = os.getpid()
+		if pid not in cls.clients:
+			cls.clients[pid] = cls.connect()
 		else:
 			try:
-				cls.client.server_info()
+				cls.clients[pid].server_info()
 			except pymongo.errors.ServerSelectionTimeoutError:
-				cls.connect()
-		return cls.client['housesitter']
+				cls.clients[pid] = cls.connect()
+		return cls.clients[pid]['housesitter']
 
 	@classmethod
 	def connect(cls):
 		try:
-			cls.client = pymongo.MongoClient(host="localhost", port=27017)
+			return pymongo.MongoClient(host="localhost", port=27017)
 		except pymongo.errors.ServerSelectionTimeoutError as err:
+			print("ERROR WHEN CONNECTION")
 			print(err)
+		return

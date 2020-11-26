@@ -34,21 +34,14 @@ if "geocode" in flags:
 
 if "empty" in flags:
 	setup.emptyTables()
+	setup.deleteImages()
 	sys.exit()
 
 if "expired" in flags:
 	Scrap.Scrap.checkExpired()
 	sys.exit()
-'''
-Scrap.Scrap.setBrowser("chrome")
-main_driver = Scrap.Scrap.getWebDriver(Scrap.BROWSER_LEFT)
-deep_driver = Scrap.Scrap.getWebDriver(Scrap.BROWSER_RIGHT)
-
-Scrap.Scrap.initWebdriverWindows()
-
-vuokraovi_com.getListings(main_driver, deep_driver)
-'''
 
 etuovi = housingsite.HousingSite('etuovi.com', 'fi')
-etuovi.setSearchTerms('Helsinki')
+etuovi.setSearchTerms(city='Helsinki')
 etuovi.start()
+

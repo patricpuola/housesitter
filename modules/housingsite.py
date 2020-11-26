@@ -27,6 +27,8 @@ class HousingSite:
 			a) Grab images
 	'''
 
+	MAIN_PID = None
+
 	# Filtering size values
 	thumbnail_height_min = 80
 	thumbnail_height_max = 400
@@ -44,7 +46,7 @@ class HousingSite:
 		self.site = self.includeProtocol(site, False)
 		self.site_url = self.includeProtocol(site, True)
 		self.search_terms = {}
-		self.search_terms['free_search'] = ""
+		self.search_terms['free_search'] = None
 		self.search_terms['field_search'] = None
 		language = language.lower()
 		lang.Lang.check(language)
@@ -68,7 +70,7 @@ class HousingSite:
 		else:
 			return site
 
-	def setSearchTerms(self, search, **kwargs):
+	def setSearchTerms(self, search = None, **kwargs):
 		if search is not None:
 			self.search_terms['free_search'] = search
 		if kwargs is not None:
@@ -91,7 +93,7 @@ class HousingSite:
 		Scrap.Scrap.initWebdriverWindows(self.main_driver)
 		self.main_driver.get(self.site_url)
 		Scrap.Scrap.waitUntilLoaded(self.main_driver)
-		if self.search_terms['free_search'] is not None:
+		if self.search_terms['free_search'] is not None or self.search_terms['field_search'] is not None:
 			self.inputSearchTerms()
 		self.search()
 
@@ -99,7 +101,7 @@ class HousingSite:
 		self.findResultPageItemContainers(self.main_driver)
 
 		url_queue = multiprocessing.JoinableQueue()
-		self.deep_scrapers = [ DeepScraper(self.site_url, url_queue, self.language, self.blockers) for i in range(setup.getConfig()['threads']) ]	# Spawn workers
+		self.deep_scrapers = [ DeepScraper(self.site_url, url_queue, self.language, self.blockers, self.search_terms) for i in range(setup.getConfig()['threads']) ]	# Spawn workers
 
 		for ds in self.deep_scrapers:	# Start workers
 			ds.start()
@@ -161,8 +163,17 @@ class HousingSite:
 			return False
 		
 		search_box = self.chooseSearchBox(text_inputs, 'location')
+
+		# TODO: actual field search
+		free_search = ""
+		if self.search_terms['field_search'] is not None:
+			for field, value in self.search_terms['field_search'].items():
+				free_search += value if free_search == "" else " "+value
 		
-		search_box.send_keys(self.search_terms['free_search'])
+		if self.search_terms['free_search'] is not None:
+			free_search += self.search_terms['free_search'] if free_search == "" else " "+self.search_terms['free_search']
+		
+		search_box.send_keys(free_search)
 
 	def chooseSearchBox(self, elements, keywords):
 		if len(elements) == 1:
@@ -477,7 +488,7 @@ class HousingSite:
 		return True
 
 class DeepScraper(multiprocessing.Process):
-	def __init__(self, site, url_queue, language, blockers):
+	def __init__(self, site, url_queue, language, blockers, search_terms):
 		multiprocessing.Process.__init__(self)
 		self.site = site
 		self.url_queue = url_queue
@@ -487,12 +498,13 @@ class DeepScraper(multiprocessing.Process):
 		self.blockers = blockers
 		self.blockers_cleared = False
 		self.language = language
+		self.search_terms = search_terms
 		self.active_listing = None
-	
+
 	def run(self):
 		proc_name = self.name
 		print("Start: "+proc_name)
-		keys = ['location', 'build-year', 'floor', 'living-space', 'total-space', 'availability', 'condition', 'layout', 'price', 'housing-type']
+		keys = ['location', 'build-year', 'floor', 'living-space', 'total-space', 'availability', 'condition', 'layout', 'price', 'housing-type', 'real-estate-agent']
 		translations = {}
 		for key in keys:
 			translations[key] = lang.Lang.get(key, self.language)
@@ -516,8 +528,12 @@ class DeepScraper(multiprocessing.Process):
 					if len(elements) == 0:
 						print('nothing found')
 						continue
-					elements.sort(key=lambda el: Levenshtein.distance(el.text, trans_val))
-					for likely_element in elements:
+					filtered_elements = []
+					for el in elements:
+						if Levenshtein.distance(el.text, trans_val) < 3*len(trans_val):
+							filtered_elements.append(el)
+					filtered_elements.sort(key=lambda el: Levenshtein.distance(el.text, trans_val))
+					for likely_element in filtered_elements:
 						following_element = self.getFollowingElement(likely_element)
 						element_text = following_element.text 	# text returns text nodes of all descendants, no need to drill down
 						if element_text == "" or not Validator.check(key, element_text):
@@ -564,6 +580,12 @@ class DeepScraper(multiprocessing.Process):
 					else:
 						extra_location_data += lrow
 				
+				if ('city' not in scraped_values or len(str(scraped_values['city'])) == 0) and 'city' in self.search_terms['field_search']:
+					searched_city = self.search_terms['field_search']['city']
+					city_found = regex.search(regex.escape(searched_city), extra_location_data, regex.IGNORECASE)
+					if city_found is not None:
+						scraped_values['city'] = city_found.group()
+
 				if 'street_address' not in scraped_values and 'city' in scraped_values and zip in scraped_values and extra_location_data != '':
 					scraped_values['street_address'] = extra_location_data	# best guess
 			if 'living-space' in scraped_values:

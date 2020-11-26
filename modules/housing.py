@@ -135,7 +135,7 @@ class Listing:
 			self.living_space_m2 = re.sub(r'[^\d,\.]', '', str(self.living_space_m2))
 			self.living_space_m2 = re.sub(r',', '.', self.living_space_m2)
 		if self.layout is not None:
-			self.layout = re.sub(r',', '+', re.sub(r'\s', '', str(self.layout))).upper()
+			self.layout = str(self.layout)
 		if self.total_space_m2 is not None:
 			self.total_space_m2 = re.sub(r'[^\d,\.]', '', str(self.total_space_m2))
 			self.total_space_m2 = re.sub(r',', '.', str(self.total_space_m2))
@@ -270,7 +270,7 @@ class Listing:
 
 		# Check if image hash found in database
 		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("SELECT id FROM images WHERE hash_MD5 = '%s' LIMIT 1", (hash_MD5))
+			cursor.execute("SELECT id FROM images WHERE hash_MD5 = '%s' LIMIT 1" % (hash_MD5,))	# Why doesn't this work with args provided separately
 			found = cursor.fetchone()
 			if found is not None:
 				return False
@@ -280,7 +280,7 @@ class Listing:
 			uuid_found = True
 			while uuid_found is not None:
 				image_id = str(uuid.uuid4())
-				cursor.execute("SELECT 1 FROM images WHERE uuid = %s LIMIT 1", (image_id))
+				cursor.execute("SELECT 1 FROM images WHERE uuid = '%s' LIMIT 1" % (image_id,))
 				uuid_found = cursor.fetchone()
 
 		image_file = open(r''+setup.getConfig()['screenshot_directory']+image_id+extension, 'bw+')
@@ -288,7 +288,7 @@ class Listing:
 		image_file.close()
 
 		with db.DBCon.get().cursor() as cursor:
-			cursor.execute("INSERT INTO images (listing_id, uuid, hash_MD5, extension, mime_type, original_filename, date_added) VALUES (%s, %s, %s, %s, %s, %s, NOW())", (self.id, image_id, hash_MD5, extension, mime_type, original_filename))
+			cursor.execute("INSERT INTO images (listing_id, uuid, hash_MD5, extension, mime_type, original_filename, date_added) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', NOW())" % (self.id, image_id, hash_MD5, extension, mime_type, original_filename))
 
 		return True
 	

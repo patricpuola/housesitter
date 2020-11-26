@@ -6,6 +6,7 @@ import zipfile
 import pathlib
 import lang
 import db
+import glob
 
 required_packages = ['mariadb-server', 'wget']
 optional_packages = []
@@ -35,12 +36,8 @@ webdrivers = {
 	}
 }
 
-def fixFileOwnerAndMode(filepath):
-	uid = pwd.getpwnam(getConfig()['user']).pw_uid
-	gid = grp.getgrnam(getConfig()['group']).gr_gid
-	os.chown(filepath, uid, gid)
-	os.chmod(filepath, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-	return True
+def fixFileExecutionMode(filepath):
+	return os.chmod(filepath, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
 
 def getWebDriverPath(browser):
 	if not isinstance(browser, str):
@@ -82,7 +79,7 @@ def getWebDriverPath(browser):
 			if (filename.endswith('driver')):
 				with open(WEBDRIVER_DIR / webdriver_file, "wb") as webdriver_handle:
 					webdriver_handle.write(zipObject.read(filename))
-				fixFileOwnerAndMode(WEBDRIVER_DIR / webdriver_file)
+				fixFileExecutionMode(WEBDRIVER_DIR / webdriver_file)
 
 	new_webdriver_fullpath = WEBDRIVER_DIR / webdriver_file
 	
@@ -313,7 +310,7 @@ def createTables():
 
 def emptyTables():
 	if input("Are you sure you want to TRUNCATE() all tables? [Y/N]: ").lower() != 'y':
-		print("[ DONE ]\n")
+		print("[ DONE ]")
 		return
 	print("Emptying all tables...")
 	with db.DBCon.get(cursor_type=db.DBCon.CURSOR_TYPE_NORMAL).cursor() as cursor:
@@ -324,3 +321,8 @@ def emptyTables():
 			cursor.execute('TRUNCATE TABLE `{}`'.format(table_name))
 			print("`{}` OK".format(table_name))
 	print("[ DONE ]\n")
+
+def deleteImages():
+	directory = ROOT / getConfig()['screenshot_directory']
+	for image in directory.iterdir():
+		os.remove(image)
